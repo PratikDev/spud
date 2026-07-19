@@ -48,7 +48,29 @@ export async function updateBoard(client: Client, project: Project) {
   }
 
   const message = await channel.send({ embeds: [embed] });
-  await message.pin().catch(() => { });
+  try {
+    await message.pin();
+  } catch (error) {
+    // Usually means the bot's role is missing "Manage Messages" in this channel.
+    // The board still gets created/edited either way, just not pinned.
+    console.warn(`Failed to pin board message for project ${project.id}:`, error);
+  }
   db.query("UPDATE projects SET board_message_id = ? WHERE id = ?").run(message.id, project.id);
   project.board_message_id = message.id;
+}
+
+export async function unpinBoard(client: Client, project: Project) {
+  if (!project.board_message_id) return;
+
+  const channel = await client.channels.fetch(project.channel_id);
+  if (!channel?.isTextBased() || !("messages" in channel)) return;
+
+  try {
+    const message = await channel.messages.fetch(project.board_message_id);
+    await message.unpin();
+  } catch (error) {
+    // Board message may already be deleted, or the bot may lack "Manage Messages" —
+    // either way there's nothing more to do here.
+    console.warn(`Failed to unpin board message for project ${project.id}:`, error);
+  }
 }

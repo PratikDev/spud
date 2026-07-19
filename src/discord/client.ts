@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits } from "discord.js";
+import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 
 import { env } from "@/env";
 import { commands } from "./commands";
@@ -17,10 +17,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const command = commands.find((c) => c.data.name === interaction.commandName);
   if (!command) return;
 
-  if (interaction.isChatInputCommand()) {
-    await command.execute(interaction);
-  } else if (command.autocomplete) {
-    await command.autocomplete(interaction);
+  try {
+    if (interaction.isChatInputCommand()) {
+      await command.execute(interaction);
+    } else if (command.autocomplete) {
+      await command.autocomplete(interaction);
+    }
+  } catch (error) {
+    console.error(`Error handling /${interaction.commandName}:`, error);
+    if (!interaction.isChatInputCommand()) return;
+
+    const reply = { content: "Something went wrong running that command.", flags: MessageFlags.Ephemeral } as const;
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(reply).catch(() => {});
+    } else {
+      await interaction.reply(reply).catch(() => {});
+    }
   }
 });
 

@@ -4,7 +4,8 @@ import { MessageFlags } from "discord.js";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
-import { db } from "@/db";
+import { db, getActiveProject } from "@/db";
+import { updateBoard } from "@/discord/board";
 
 const inputSchema = z.object({
   title: z.string().trim().nonempty().max(200, "title must be 200 characters or fewer"),
@@ -67,6 +68,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   await interaction.reply(`Started project **${title}**, linked to \`${githubRepo}\`. This channel's board is now active.`);
+
+  const project = getActiveProject(interaction.channelId);
+  if (project) {
+    await updateBoard(interaction.client, project);
+  }
 
   // Ephemeral + separate from the announcement above: this secret lets anyone forge
   // webhook payloads if it leaks, so only the admin who ran the command should see it.

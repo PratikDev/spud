@@ -2,6 +2,7 @@ import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from 
 import { MessageFlags } from "discord.js";
 
 import { db, getActiveProject } from "@/db";
+import { unpinBoard } from "@/discord/board";
 import { NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
@@ -20,6 +21,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   db.query("UPDATE projects SET status = 'ended', ended_at = strftime('%s', 'now') WHERE id = ?").run(project.id);
+  await unpinBoard(interaction.client, project);
 
   await interaction.reply(`Ended project **${project.title}**. Its board and task history are archived, not deleted.`);
 }
