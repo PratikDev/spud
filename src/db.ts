@@ -1,5 +1,7 @@
 import { Database } from "bun:sqlite";
 
+import type { Project } from "@/types";
+
 export const db = new Database(process.env.DATABASE_PATH ?? "spud.sqlite");
 
 db.run("PRAGMA journal_mode = WAL;");
@@ -38,3 +40,12 @@ db.run(`
     UNIQUE (project_id, branch_id)
   );
 `);
+
+// Shared by every command that only makes sense in the context of "the active
+// project in this channel" (project end/status, and later the claim board commands).
+export function getActiveProject(channelId: string): Project | null {
+  return (
+    (db.query("SELECT * FROM projects WHERE channel_id = ? AND status = 'active'").get(channelId) as Project | null) ??
+    null
+  );
+}

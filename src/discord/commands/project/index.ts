@@ -1,7 +1,17 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
 import type { Command } from "@/discord/commands";
+import * as end from "./end";
+import * as list from "./list";
 import * as start from "./start";
+import * as status from "./status";
+
+const subcommandsExecute = {
+  start: start.execute,
+  end: end.execute,
+  status: status.execute,
+  list: list.execute,
+} as const;
 
 // Each subcommand lives in its own file (data + execute) and gets one line
 // here to register its builder, plus one switch case to dispatch to it.
@@ -10,12 +20,17 @@ export const project: Command = {
     .setName("project")
     .setDescription("Manage the hackathon project for this channel")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addSubcommand(start.data),
+    .addSubcommand(start.data)
+    .addSubcommand(end.data)
+    .addSubcommand(status.data)
+    .addSubcommand(list.data),
 
   async execute(interaction) {
-    switch (interaction.options.getSubcommand()) {
-      case "start":
-        return start.execute(interaction);
+    const subcommand = interaction.options.getSubcommand() as keyof typeof subcommandsExecute;
+    const execute = subcommandsExecute[subcommand];
+    if (!execute) {
+      throw new Error(`Unknown subcommand: ${subcommand}`);
     }
+    return execute(interaction);
   },
 };
