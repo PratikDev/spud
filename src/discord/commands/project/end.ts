@@ -2,6 +2,7 @@ import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from 
 import { MessageFlags } from "discord.js";
 
 import { db, getActiveProject } from "@/db";
+import { NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
   return sub.setName("end").setDescription("End the active project in this channel (archives its data)");
@@ -12,7 +13,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   if (!project) {
     await interaction.reply({
-      content: "No active project in this channel. An admin needs to run `/project start` first.",
+      content: NO_ACTIVE_PROJECT,
       flags: MessageFlags.Ephemeral,
     });
     return;
