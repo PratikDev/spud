@@ -4,7 +4,9 @@ import type {
   SlashCommandBuilder,
   SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
+
 import { ping } from "./ping";
+import { project } from "./project";
 
 export interface Command {
   data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
@@ -13,4 +15,4 @@ export interface Command {
 }
 
 // Feature 0 / Feature 1 commands are added here as they're built.
-export const commands: Command[] = [ping];
+export const commands: Command[] = [ping, project];
