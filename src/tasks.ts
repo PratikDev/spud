@@ -51,23 +51,14 @@ export function deleteTask(taskId: number) {
   db.query("DELETE FROM tasks WHERE id = ?").run(taskId);
 }
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-}
-
-// Placeholder naming scheme until the Feature 2+3 milestone replaces this with
-// the LLM-generated branch name (and overlap check) described in the PRD.
-export function generateBranchId(projectId: number, description: string): string {
-  const base = `feature/${slugify(description) || "task"}`;
-  let candidate = base;
+// The LLM's branch name is deterministic for a given description, but two
+// different descriptions can still land on the same slug — this guarantees
+// the (project_id, branch_id) uniqueness the schema requires either way.
+export function ensureUniqueBranchId(projectId: number, baseBranchId: string): string {
+  let candidate = baseBranchId;
   let suffix = 2;
   while (findTaskByBranch(projectId, candidate)) {
-    candidate = `${base}-${suffix}`;
+    candidate = `${baseBranchId}-${suffix}`;
     suffix++;
   }
   return candidate;
