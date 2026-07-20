@@ -1,4 +1,4 @@
-import { getProjectById } from "@/db";
+import { getProjectByPublicId } from "@/db";
 import { client } from "@/discord/client";
 import { env } from "@/env";
 import { compareBranches, getDefaultBranch } from "@/github/compare";
@@ -50,9 +50,7 @@ async function processPushEvent(project: Project, request: Request, rawBody: str
 }
 
 export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github/:projectId">): Promise<Response> {
-  const projectId = Number(req.params.projectId);
-
-  const project = getProjectById(projectId);
+  const project = getProjectByPublicId(req.params.projectId);
   if (!project) return new Response("Not found", { status: 404 });
 
   const rawBody = await req.text();

@@ -3,6 +3,7 @@ export type TaskStatus = "unclaimed" | "claimed" | "done";
 
 export interface Project {
   id: number;
+  public_id: string;
   channel_id: string;
   guild_id: string;
   title: string;

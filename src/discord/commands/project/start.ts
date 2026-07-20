@@ -75,7 +75,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await updateBoard(interaction.client, project);
   }
 
-  const webhookPath = `/webhooks/github/${project?.id ?? "?"}`;
+  const webhookPath = `/webhooks/github/${project?.public_id ?? "?"}`;
   const payloadUrl = env.PUBLIC_BASE_URL ? `${env.PUBLIC_BASE_URL}${webhookPath}` : webhookPath;
   const payloadUrlNote = env.PUBLIC_BASE_URL ? "" : " (prepend your host — `PUBLIC_BASE_URL` isn't set)";
 

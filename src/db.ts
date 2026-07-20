@@ -9,6 +9,7 @@ db.run("PRAGMA journal_mode = WAL;");
 db.run(`
   CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_id TEXT NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
     channel_id TEXT NOT NULL,
     guild_id TEXT NOT NULL,
     title TEXT NOT NULL,
@@ -50,9 +51,11 @@ export function getActiveProject(channelId: string): Project | null {
   );
 }
 
-// Used by the GitHub webhook handler, which only has {project_id} from the URL —
+// Used by the GitHub webhook handler, which only has {public_id} from the URL —
 // it may be looking up an ended project too (see the "ended projects still get
 // stray webhook traffic" case), so this doesn't filter by status like the one above.
-export function getProjectById(id: number): Project | null {
-  return (db.query("SELECT * FROM projects WHERE id = ?").get(id) as Project | null) ?? null;
+// public_id (not the internal auto-increment id) is used here since it's exposed
+// in the webhook payload URL and shouldn't reveal a guessable sequential number.
+export function getProjectByPublicId(publicId: string): Project | null {
+  return (db.query("SELECT * FROM projects WHERE public_id = ?").get(publicId) as Project | null) ?? null;
 }
