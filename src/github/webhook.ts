@@ -41,9 +41,14 @@ async function processPushEvent(project: Project, request: Request, rawBody: str
 }
 
 export async function handleWebhookRequest(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+
+  if (request.method === "GET" && url.pathname === "/health") {
+    return new Response("OK", { status: 200 });
+  }
+
   if (request.method !== "POST") return new Response("Not found", { status: 404 });
 
-  const url = new URL(request.url);
   const match = url.pathname.match(WEBHOOK_PATH_PATTERN);
   if (!match?.[1]) return new Response("Not found", { status: 404 });
 
