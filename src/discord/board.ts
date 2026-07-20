@@ -22,7 +22,7 @@ export function buildBoardEmbed(project: Project, tasks: Task[]) {
   return new EmbedBuilder()
     .setTitle(project.title)
     .setURL(`https://github.com/${project.github_repo}`)
-    .setColor(0x2b6cb0)
+    .setColor(0xe3a857)
     .addFields(
       { name: "🟢 Up for grabs", value: formatSection(unclaimed) },
       { name: "🔧 In progress", value: formatSection(claimed) },
