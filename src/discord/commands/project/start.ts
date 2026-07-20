@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { db, getActiveProject } from "@/db";
 import { updateBoard } from "@/discord/board";
+import { env } from "@/env";
 
 const inputSchema = z.object({
   title: z.string().trim().nonempty().max(200, "title must be 200 characters or fewer"),
@@ -74,14 +75,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await updateBoard(interaction.client, project);
   }
 
+  const webhookPath = `/webhooks/github/${project?.id ?? "?"}`;
+  const payloadUrl = env.PUBLIC_BASE_URL ? `${env.PUBLIC_BASE_URL}${webhookPath}` : webhookPath;
+  const payloadUrlNote = env.PUBLIC_BASE_URL ? "" : " (prepend your host — `PUBLIC_BASE_URL` isn't set)";
+
   // Ephemeral + separate from the announcement above: this secret lets anyone forge
   // webhook payloads if it leaks, so only the admin who ran the command should see it.
   await interaction.followUp({
     content: [
-      "**GitHub webhook secret** (only you can see this — save it now, it won't be shown again):",
-      `\`${webhookSecret}\``,
+      "**GitHub webhook setup** (only you can see this — save the secret now, it won't be shown again):",
+      `- Payload URL: \`${payloadUrl}\`${payloadUrlNote}`,
+      "- Content type: `application/json`",
+      `- Secret: \`${webhookSecret}\``,
+      "- Events: just the `push` event",
       "",
-      "You'll use this when adding the webhook on the repo (Settings → Webhooks → Add webhook) once that setup step is ready.",
+      "Add this under the repo's **Settings → Webhooks → Add webhook**.",
     ].join("\n"),
     flags: MessageFlags.Ephemeral,
   });

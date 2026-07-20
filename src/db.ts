@@ -49,3 +49,10 @@ export function getActiveProject(channelId: string): Project | null {
     null
   );
 }
+
+// Used by the GitHub webhook handler, which only has {project_id} from the URL —
+// it may be looking up an ended project too (see the "ended projects still get
+// stray webhook traffic" case), so this doesn't filter by status like the one above.
+export function getProjectById(id: number): Project | null {
+  return (db.query("SELECT * FROM projects WHERE id = ?").get(id) as Project | null) ?? null;
+}
