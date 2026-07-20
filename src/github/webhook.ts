@@ -7,11 +7,20 @@ import { analyzeDrift } from "@/llm/drift";
 import { findTaskByBranch } from "@/tasks";
 import type { Project } from "@/types";
 
-const WEBHOOK_PATH_PATTERN = /^\/webhooks\/github\/(\d+)$/;
+// GitHub sends a "ping" event the moment a webhook is added — post the success
+// confirmation in the project's channel so the whole team knows drift-checking
+// is live, not just the admin who set it up (nothing sensitive in this message).
+async function notifyWebhookConnected(project: Project) {
+  const channel = await client.channels.fetch(project.channel_id);
+  if (!channel?.isTextBased() || !("send" in channel)) return;
+
+  await channel.send(
+    `✅ The GitHub webhook for **${project.title}** (\`${project.github_repo}\`) was connected successfully — pushes will now be checked for scope drift.`,
+  );
+}
 
 async function processPushEvent(project: Project, request: Request, rawBody: string) {
   if (project.status !== "active") return;
-  if (request.headers.get("x-github-event") !== "push") return;
 
   const payload = JSON.parse(rawBody) as { ref?: string };
   if (!payload.ref?.startsWith("refs/heads/")) return;
@@ -55,7 +64,13 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
   // return 200 — GitHub treats non-2xx as a delivery failure and retries/flags
   // the webhook as unhealthy, which we don't want for our own no-op cases.
   try {
-    await processPushEvent(project, req, rawBody);
+    const githubEvent = req.headers.get("x-github-event");
+
+    if (githubEvent === "ping") {
+      await notifyWebhookConnected(project);
+    } else if (githubEvent === "push") {
+      await processPushEvent(project, req, rawBody);
+    }
   } catch (error) {
     console.error(`Error processing webhook for project ${project.id}:`, error);
   }
