@@ -1,10 +1,11 @@
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 
 import { getActiveProject } from "@/db";
+import { canManageTask } from "@/discord/authorization";
 import { respondWithTaskAutocomplete } from "@/discord/autocomplete";
 import { updateBoard } from "@/discord/board";
 import type { Command } from "@/discord/commands";
-import { NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
+import { NOT_TASK_OWNER, NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
 import { findTaskByBranch, freeTask } from "@/tasks";
 
 export const free: Command = {
@@ -34,6 +35,11 @@ export const free: Command = {
         content: `No claimed task found for branch \`${branchId}\`.`,
         flags: MessageFlags.Ephemeral,
       });
+      return;
+    }
+
+    if (!canManageTask(interaction, task.owner)) {
+      await interaction.reply({ content: NOT_TASK_OWNER, flags: MessageFlags.Ephemeral });
       return;
     }
 
