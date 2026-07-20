@@ -90,6 +90,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       "- Events: just the `push` event",
       "",
       "Add this under the repo's **Settings → Webhooks → Add webhook**.",
+      "",
+      `Note: drift checks call the GitHub API unauthenticated, so \`${githubRepo}\` needs to be a **public** repo.`,
     ].join("\n"),
     flags: MessageFlags.Ephemeral,
   });
