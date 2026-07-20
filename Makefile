@@ -9,7 +9,7 @@ build:
 	docker build -t $(IMAGE_NAME) .
 
 run:
-	docker run --env-file $(ENV_FILE) -p $(PORT):3000 -v spud-data:/data --name $(CONTAINER_NAME) -d $(IMAGE_NAME)
+	docker run --env-file $(ENV_FILE) -p $(PORT):3000 --name $(CONTAINER_NAME) -d $(IMAGE_NAME)
 
 logs:
 	docker logs -f $(CONTAINER_NAME)

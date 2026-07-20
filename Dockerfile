@@ -1,4 +1,4 @@
-FROM oven/bun:1-alpine
+FROM oven/bun:1-alpine AS build
 
 WORKDIR /app
 
@@ -6,14 +6,19 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 
 COPY . .
+RUN bun build ./index.ts --compile --outfile spud
 
-# Persist the SQLite file across restarts/redeploys by mounting a volume at /data.
-ENV DATABASE_PATH=/data/spud.sqlite
-RUN mkdir -p /data && chown bun:bun /data
-VOLUME ["/data"]
+# Runtime stage only needs the compiled binary — no bun, no node_modules, no
+# source. The SQLite file lives in the container's own writable layer and is
+# lost on restart/redeploy; that's fine for personal use, not worth paying
+# for a volume to avoid.
+FROM alpine:3.20
 
-USER bun
+RUN adduser -D app
+WORKDIR /app
+COPY --from=build /app/spud ./spud
+USER app
 
 EXPOSE 3000
 
-CMD ["bun", "run", "index.ts"]
+ENTRYPOINT ["./spud"]
