@@ -7,3 +7,13 @@ node_modules
 docs
 README.md
 Makefile
+Dockerfile*
+docker-compose*
+.dockerignore
+.gitignore
+LICENSE
+.vscode
+helm-charts
+.editorconfig
+.idea
+coverage*

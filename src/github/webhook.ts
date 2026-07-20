@@ -40,23 +40,14 @@ async function processPushEvent(project: Project, request: Request, rawBody: str
   );
 }
 
-export async function handleWebhookRequest(request: Request): Promise<Response> {
-  const url = new URL(request.url);
+export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github/:projectId">): Promise<Response> {
+  const projectId = Number(req.params.projectId);
 
-  if (request.method === "GET" && url.pathname === "/health") {
-    return new Response("OK", { status: 200 });
-  }
-
-  if (request.method !== "POST") return new Response("Not found", { status: 404 });
-
-  const match = url.pathname.match(WEBHOOK_PATH_PATTERN);
-  if (!match?.[1]) return new Response("Not found", { status: 404 });
-
-  const project = getProjectById(Number(match[1]));
+  const project = getProjectById(projectId);
   if (!project) return new Response("Not found", { status: 404 });
 
-  const rawBody = await request.text();
-  if (!verifySignature(rawBody, project.webhook_secret, request.headers.get("x-hub-signature-256"))) {
+  const rawBody = await req.text();
+  if (!verifySignature(rawBody, project.webhook_secret, req.headers.get("x-hub-signature-256"))) {
     return new Response("Invalid signature", { status: 401 });
   }
 
@@ -64,7 +55,7 @@ export async function handleWebhookRequest(request: Request): Promise<Response> 
   // return 200 — GitHub treats non-2xx as a delivery failure and retries/flags
   // the webhook as unhealthy, which we don't want for our own no-op cases.
   try {
-    await processPushEvent(project, request, rawBody);
+    await processPushEvent(project, req, rawBody);
   } catch (error) {
     console.error(`Error processing webhook for project ${project.id}:`, error);
   }
@@ -75,7 +66,12 @@ export async function handleWebhookRequest(request: Request): Promise<Response> 
 export function startWebhookServer() {
   const server = Bun.serve({
     port: env.PORT,
-    fetch: handleWebhookRequest,
+    routes: {
+      "/health": new Response("OK"),
+      "/webhooks/github/:projectId": {
+        POST: handleWebhookRequest
+      },
+    },
   });
   console.log(`Webhook server listening on port ${server.port}`);
   return server;
