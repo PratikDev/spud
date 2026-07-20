@@ -6,7 +6,7 @@ import { updateBoard } from "@/discord/board";
 import type { Command } from "@/discord/commands";
 import { NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
 import { analyzeClaim } from "@/llm/claim-analysis";
-import { claimExistingTask, createAndClaimTask, ensureUniqueBranchId, findTaskByDescription, listTasksByStatus } from "@/tasks";
+import { claimExistingTask, createAndClaimTask, ensureUniqueBranchId, findTaskByDescription, getTasksForProject } from "@/tasks";
 import type { Task } from "@/types";
 
 export const claim: Command = {
@@ -32,31 +32,38 @@ export const claim: Command = {
     const existing = findTaskByDescription(project.id, description, "unclaimed");
 
     let task: Task;
-    let overlapWarning: string | null = null;
 
     if (existing) {
       claimExistingTask(existing.id, interaction.user.id);
       task = existing;
     } else {
-      const claimedTasks = listTasksByStatus(project.id, "claimed");
+      const allTasks = getTasksForProject(project.id);
       const analysis = await analyzeClaim(
         description,
-        claimedTasks.map((t) => t.description),
+        allTasks.map((t) => t.description),
       );
+
+      const overlapping = allTasks.find((t) => t.description === analysis.overlappingTask);
+      if (overlapping) {
+        const owner = overlapping.owner ? `<@${overlapping.owner}>'s` : "an existing";
+        await interaction.reply({
+          content: [
+            `This looks like a duplicate of ${owner} task **${overlapping.description}** (\`${overlapping.branch_id}\`) - *${overlapping.status}*.`,
+            "If you think it isn't, please try again with a more detailed description.",
+          ].join("\n"),
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
 
       const branchId = ensureUniqueBranchId(project.id, analysis.branchName);
       task = createAndClaimTask(project.id, branchId, description, interaction.user.id);
-
-      const overlapping = claimedTasks.find((t) => t.description === analysis.overlappingTask);
-      if (overlapping) {
-        const owner = overlapping.owner ? `<@${overlapping.owner}>'s` : "an existing";
-        overlapWarning = `⚠️ This might be the same as ${owner} task **${overlapping.description}** (\`${overlapping.branch_id}\`) — is this genuinely different?\n\n`;
-      }
     }
 
     await updateBoard(interaction.client, project);
-    const confirmation = `Claimed **${task.description}** on \`${task.branch_id}\`.\n\`\`\`\ngit checkout -b ${task.branch_id}\n\`\`\``;
-    await interaction.reply(`${overlapWarning ?? ""}${confirmation}`);
+    await interaction.reply(
+      `Claimed **${task.description}** on \`${task.branch_id}\`.\n\`\`\`\ngit checkout -b ${task.branch_id}\n\`\`\``,
+    );
   },
 
   async autocomplete(interaction) {

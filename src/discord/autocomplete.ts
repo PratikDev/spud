@@ -6,7 +6,7 @@ import type { TaskStatus } from "@/types";
 
 // "description": suggest+match on the task description, name === value (used by /claim).
 // "branch": suggest+match on the branch ID, showing the description alongside it
-// (used by /done, /free, /delete-task, which all take a branch as input).
+// (used by /done, /free, /delete, which all take a branch as input).
 type MatchField = "description" | "branch";
 
 export async function respondWithTaskAutocomplete(
@@ -16,7 +16,6 @@ export async function respondWithTaskAutocomplete(
 ) {
   const project = getActiveProject(interaction.channelId);
   if (!project) {
-    console.warn(`No active project found for channel ${interaction.channelId} during autocomplete.`);
     await interaction.respond([]);
     return;
   }
