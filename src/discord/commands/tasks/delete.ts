@@ -11,13 +11,9 @@ import { deleteTask, findTaskByBranch } from "@/tasks";
 export const deleteTaskCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("delete")
-    .setDescription("Delete an unclaimed task from the board")
+    .setDescription("Delete a task from the board")
     .addStringOption((opt) =>
-      opt
-        .setName("branch")
-        .setDescription("Branch of the unclaimed task to delete")
-        .setRequired(true)
-        .setAutocomplete(true),
+      opt.setName("branch").setDescription("Branch of the task to delete").setRequired(true).setAutocomplete(true),
     ),
 
   async execute(interaction) {
@@ -30,9 +26,9 @@ export const deleteTaskCommand: Command = {
     const branchId = interaction.options.getString("branch", true).trim();
     const task = findTaskByBranch(project.id, branchId);
 
-    if (!task || task.status !== "unclaimed") {
+    if (!task) {
       await interaction.reply({
-        content: `No unclaimed task found for branch \`${branchId}\`. Claimed or done tasks must be freed first.`,
+        content: `No task found for branch \`${branchId}\`.`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -49,6 +45,6 @@ export const deleteTaskCommand: Command = {
   },
 
   async autocomplete(interaction) {
-    await respondWithTaskAutocomplete(interaction, "unclaimed");
+    await respondWithTaskAutocomplete(interaction, undefined);
   },
 };

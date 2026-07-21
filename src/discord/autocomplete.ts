@@ -1,7 +1,7 @@
 import type { AutocompleteInteraction } from "discord.js";
 
 import { getActiveProject } from "@/db";
-import { listTasksByStatus } from "@/tasks";
+import { getTasksForProject, listTasksByStatus } from "@/tasks";
 import type { TaskStatus } from "@/types";
 
 // "description": suggest+match on the task description, name === value (used by /claim).
@@ -11,7 +11,7 @@ type MatchField = "description" | "branch";
 
 export async function respondWithTaskAutocomplete(
   interaction: AutocompleteInteraction,
-  status: TaskStatus,
+  status: TaskStatus | undefined,
   matchField: MatchField = "branch",
 ) {
   const project = getActiveProject(interaction.channelId);
@@ -22,7 +22,9 @@ export async function respondWithTaskAutocomplete(
 
   const focused = interaction.options.getFocused().toLowerCase();
 
-  const matches = listTasksByStatus(project.id, status)
+  const tasks = status ? listTasksByStatus(project.id, status) : getTasksForProject(project.id);
+
+  const matches = tasks
     .filter((task) => (matchField === "description" ? task.description : task.branch_id).toLowerCase().includes(focused))
     .slice(0, 25)
     .map((task) =>

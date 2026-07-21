@@ -27,9 +27,9 @@ A pinned, auto-updating embed in the project's channel with three sections: 🟢
 | `/tasks` | Shows the current board state on demand |
 | `/done <branch>` | Marks a claimed task done (autocompletes claimed branches) |
 | `/free <branch>` | Releases a claimed task back to unclaimed (autocompletes claimed branches) |
-| `/delete <branch>` | Deletes an unclaimed task (autocompletes unclaimed branches only — claimed/done tasks must be freed first) |
+| `/delete <branch>` | Deletes a task of any status — unclaimed, claimed, or done (autocompletes across all branches) |
 
-**Authorization:** `/done`, `/free`, and `/delete` only work for the task's current owner or a server admin — anyone else gets turned away. Since `/delete` only ever targets unclaimed tasks (owner already cleared), that one is effectively admin-only in practice.
+**Authorization:** `/done`, `/free`, and `/delete` only work for the task's current owner or a server admin — anyone else gets turned away. The one exception is deleting an *unclaimed* task, which has no owner to match against, so that specific case is admin-only.
 
 ### Overlap Detection + Branch Naming
 
@@ -212,6 +212,5 @@ src/
 - **GitHub repos must be public** — the compare API is called unauthenticated, so private repos won't work, and you're subject to GitHub's 60 requests/hour unauthenticated rate limit.
 - **Overlap detection can reject legitimate claims** — it's an LLM judgment call with no manual override; if it wrongly flags a genuinely different task as a duplicate, your only recourse is retrying `/claim` with a more detailed description.
 - **Branch names must match exactly** — `/done`, `/free`, `/delete`, and drift-checking all key off the exact branch name the bot generated. Push to a differently-named branch and it's silently never scope-checked — by design, not a crash.
-- **`/delete` is effectively admin-only** — it only ever targets unclaimed tasks, which have no owner once freed, so the owner-or-admin authorization check leaves only admins able to run it.
 - **Single instance only** — one SQLite file and one Discord gateway connection per process; this isn't built to run as multiple replicas behind a load balancer.
 - **No schema migrations** — schema changes are hand-written `CREATE TABLE`/column edits with no migration tool. Given the "OK to lose data" stance that's intentional, but existing rows won't pick up new columns without a fresh database.
