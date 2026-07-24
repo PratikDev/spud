@@ -16,7 +16,10 @@ db.run(`
     github_repo TEXT NOT NULL,
     webhook_secret TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('active', 'ended')) DEFAULT 'active',
-    started_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    start_time INTEGER,
+    end_time INTEGER,
+    rulebook_message_id TEXT,
     ended_at INTEGER,
     board_message_id TEXT
   );

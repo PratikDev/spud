@@ -26,10 +26,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const countFor = (status: TaskStatus) => counts.find((row) => row.status === status)?.count ?? 0;
 
+  const timeline =
+    project.start_time && project.end_time
+      ? `<t:${project.start_time}:F> → <t:${project.end_time}:F>`
+      : "_not set — run `/project configure`_";
+  const rulebook = project.rulebook_message_id
+    ? `https://discord.com/channels/${interaction.guildId}/${project.channel_id}/${project.rulebook_message_id}`
+    : "_not uploaded_";
+
   await interaction.reply(
     [
       `**${project.title}** — \`${project.github_repo}\``,
       `Unclaimed: ${countFor("unclaimed")} · Claimed: ${countFor("claimed")} · Done: ${countFor("done")}`,
+      `Timeline: ${timeline}`,
+      `Rulebook: ${rulebook}`,
     ].join("\n"),
   );
 }

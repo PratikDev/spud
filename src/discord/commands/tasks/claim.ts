@@ -28,6 +28,14 @@ export const claim: Command = {
       return;
     }
 
+    if (!project.start_time || !project.end_time) {
+      await interaction.reply({
+        content: "Set this project's start and end time first with `/project configure` before claiming tasks.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
     const description = interaction.options.getString("description", true).trim();
     const existing = findTaskByDescription(project.id, description, "unclaimed");
 

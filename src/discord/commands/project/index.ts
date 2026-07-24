@@ -1,6 +1,7 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
 import type { Command } from "@/discord/commands";
+import * as configure from "./configure";
 import * as end from "./end";
 import * as list from "./list";
 import * as start from "./start";
@@ -8,6 +9,7 @@ import * as status from "./status";
 
 const subcommandsExecute = {
   start: start.execute,
+  configure: configure.execute,
   end: end.execute,
   status: status.execute,
   list: list.execute,
@@ -21,6 +23,7 @@ export const project: Command = {
     .setDescription("Manage the hackathon project for this channel")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand(start.data)
+    .addSubcommand(configure.data)
     .addSubcommand(end.data)
     .addSubcommand(status.data)
     .addSubcommand(list.data),

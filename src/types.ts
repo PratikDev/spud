@@ -10,7 +10,10 @@ export interface Project {
   github_repo: string;
   webhook_secret: string;
   status: ProjectStatus;
-  started_at: number;
+  created_at: number;
+  start_time: number | null;
+  end_time: number | null;
+  rulebook_message_id: string | null;
   ended_at: number | null;
   board_message_id: string | null;
 }

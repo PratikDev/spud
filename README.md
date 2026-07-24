@@ -11,11 +11,14 @@ A project is scoped to a **channel**, not the whole server, so one Discord serve
 | Command | Description |
 |---|---|
 | `/project start <title> <github-repo>` | Starts a new active project in this channel, links a GitHub repo, generates a webhook secret |
+| `/project configure [start-time] [end-time] [rulebook]` | Sets or updates the project's timeline (parsed from natural language via `chrono-node`, e.g. "July 25 9am") and rulebook file. Any subset of fields can be provided per call |
 | `/project end` | Ends the active project, archives (doesn't delete) its board/task data, unpins the board |
 | `/project status` | Shows the active project's title, repo, and task counts by status |
 | `/project list` | Lists all active projects across the server (admin bird's-eye view, ephemeral) |
 
 Admin gating uses Discord's own `Administrator` permission — no manual user-ID checks. A channel can only have one *active* project at a time, enforced at the database level (a partial unique index), not just in application code.
+
+`/project start` only takes the bare minimum (title + repo); timeline and rulebook are set separately via `/project configure` since they might not be decided yet when the project is created. `/claim` refuses to run until both `start-time` and `end-time` are set. Timeline input is natural language (no timezone support — everything is parsed relative to the process's own local time), and the rulebook file is re-posted as a message in the project channel rather than storing the raw attachment URL, since Discord's CDN URLs carry a signed expiry but a message can always be re-fetched (or jumped to) for a fresh one.
 
 ### Claim Board
 
@@ -193,7 +196,7 @@ src/
     register-commands.ts          # one-off script to push slash commands to Discord
     commands/
       constants.ts                 # shared reply strings
-      project/                     # /project start|end|status|list
+      project/                     # /project start|configure|end|status|list
       tasks/                       # /claim, /tasks, /done, /free, /delete
   llm/
     client.ts                   # shared Gemini model instance
@@ -214,3 +217,4 @@ src/
 - **Branch names must match exactly** — `/done`, `/free`, `/delete`, and drift-checking all key off the exact branch name the bot generated. Push to a differently-named branch and it's silently never scope-checked — by design, not a crash.
 - **Single instance only** — one SQLite file and one Discord gateway connection per process; this isn't built to run as multiple replicas behind a load balancer.
 - **No schema migrations** — schema changes are hand-written `CREATE TABLE`/column edits with no migration tool. Given the "OK to lose data" stance that's intentional, but existing rows won't pick up new columns without a fresh database.
+- **No multi-timezone support** — `/project configure`'s natural-language timeline input (via `chrono-node`) is parsed relative to the bot process's own local time, not per-user. Fine for a single co-located team, not for a distributed one.
