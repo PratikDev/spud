@@ -4,19 +4,21 @@ A Discord bot for hackathon task coordination — a live claim board that shows 
 
 ## Features
 
-### Project Lifecycle (admin-only)
+### Project Lifecycle
 
-A project is scoped to a **channel**, not the whole server, so one Discord server can host multiple concurrent hackathons/teams without collision. No other command works until an admin starts one.
+A project is scoped to a **channel**, not the whole server, so one Discord server can host multiple concurrent hackathons/teams without collision. No task command works until someone starts one.
 
-| Command | Description |
-|---|---|
-| `/project start <title> <github-repo>` | Starts a new active project in this channel, links a GitHub repo, generates a webhook secret |
-| `/project configure [start-time] [end-time] [rulebook]` | Sets or updates the project's timeline (parsed from natural language via `chrono-node`, e.g. "July 25 9am") and rulebook file. Any subset of fields can be provided per call |
-| `/project end` | Ends the active project, archives (doesn't delete) its board/task data, unpins the board |
-| `/project status` | Shows the active project's title, repo, and task counts by status |
-| `/project list` | Lists all active projects across the server (admin bird's-eye view, ephemeral) |
+| Command | Access | Description |
+|---|---|---|
+| `/project start <title> <github-repo>` | Anyone | Starts a new active project in this channel, links a GitHub repo, generates a webhook secret. Whoever runs it becomes the project's **team lead** |
+| `/project configure [start-time] [end-time] [rulebook]` | Team lead only | Sets or updates the project's timeline (parsed from natural language via `chrono-node`, e.g. "July 25 9am") and rulebook file. Any subset of fields can be provided per call |
+| `/project end` | Team lead only | Ends the active project, archives (doesn't delete) its board/task data, unpins the board |
+| `/project status` | Team lead only | Shows the active project's title, repo, task counts, timeline, and rulebook link |
+| `/project list` | Server admin | Lists all active projects across the server (bird's-eye view, ephemeral) |
 
-Admin gating uses Discord's own `Administrator` permission — no manual user-ID checks. A channel can only have one *active* project at a time, enforced at the database level (a partial unique index), not just in application code.
+`/project start` is open to anyone — whoever runs it in a channel becomes that project's team lead, no `Administrator` permission required. `/project configure`, `/project end`, and `/project status` are then restricted to that specific Discord member — with **no admin override**. Only `/project list` requires Discord's `Administrator` permission, since it's a cross-channel, server-wide view. This mixed anyone/team-lead/admin model can't be expressed through Discord's per-command default-permission system (which applies to a whole command, not per-subcommand), so it's enforced in application code instead (see [authorization.ts](src/discord/authorization.ts)). A channel can only have one *active* project at a time, enforced at the database level (a partial unique index), not just in application code.
+
+Team lead has no reassignment path yet — if the team lead leaves the server, `/project configure`/`end`/`status` become permanently unusable for that project (no admin fallback, no migration tool to patch it).
 
 `/project start` only takes the bare minimum (title + repo); timeline and rulebook are set separately via `/project configure` since they might not be decided yet when the project is created. `/claim` refuses to run until both `start-time` and `end-time` are set. Timeline input is natural language (no timezone support — everything is parsed relative to the process's own local time), and the rulebook file is re-posted as a message in the project channel rather than storing the raw attachment URL, since Discord's CDN URLs carry a signed expiry but a message can always be re-fetched (or jumped to) for a fresh one.
 
@@ -218,3 +220,4 @@ src/
 - **Single instance only** — one SQLite file and one Discord gateway connection per process; this isn't built to run as multiple replicas behind a load balancer.
 - **No schema migrations** — schema changes are hand-written `CREATE TABLE`/column edits with no migration tool. Given the "OK to lose data" stance that's intentional, but existing rows won't pick up new columns without a fresh database.
 - **No multi-timezone support** — `/project configure`'s natural-language timeline input (via `chrono-node`) is parsed relative to the bot process's own local time, not per-user. Fine for a single co-located team, not for a distributed one.
+- **Team lead has no reassignment path** — `/project configure`, `/project end`, and `/project status` are gated to the team lead (whoever ran `/project start`) with no admin override. If that person leaves the server, those subcommands become permanently unusable for that project — there's no command to reassign team lead and no migration tool to patch the `team_lead` column by hand.

@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
 
 import type { Command } from "@/discord/commands";
 import * as configure from "./configure";
@@ -21,7 +21,6 @@ export const project: Command = {
   data: new SlashCommandBuilder()
     .setName("project")
     .setDescription("Manage the hackathon project for this channel")
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand(start.data)
     .addSubcommand(configure.data)
     .addSubcommand(end.data)

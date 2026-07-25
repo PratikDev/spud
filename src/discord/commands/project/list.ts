@@ -2,6 +2,8 @@ import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from 
 import { MessageFlags } from "discord.js";
 
 import { db } from "@/db";
+import { isServerAdmin } from "@/discord/authorization";
+import { NOT_ADMIN } from "@/discord/commands/constants";
 import type { Project } from "@/types";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
@@ -11,6 +13,11 @@ export function data(sub: SlashCommandSubcommandBuilder) {
 export async function execute(interaction: ChatInputCommandInteraction) {
   if (!interaction.guildId) {
     await interaction.reply({ content: "This command only works in a server.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  if (!isServerAdmin(interaction)) {
+    await interaction.reply({ content: NOT_ADMIN, flags: MessageFlags.Ephemeral });
     return;
   }
 

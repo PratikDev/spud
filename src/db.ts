@@ -19,6 +19,7 @@ db.run(`
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     start_time INTEGER,
     end_time INTEGER,
+    team_lead TEXT NOT NULL,
     rulebook_message_id TEXT,
     ended_at INTEGER,
     board_message_id TEXT

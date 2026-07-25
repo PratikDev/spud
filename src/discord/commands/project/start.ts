@@ -51,9 +51,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     db.query(
-      `INSERT INTO projects (channel_id, guild_id, title, github_repo, webhook_secret)
-       VALUES (?, ?, ?, ?, ?)`,
-    ).run(interaction.channelId, interaction.guildId, title, githubRepo, webhookSecret);
+      `INSERT INTO projects (channel_id, guild_id, title, github_repo, webhook_secret, team_lead)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(interaction.channelId, interaction.guildId, title, githubRepo, webhookSecret, interaction.user.id);
   } catch (error) {
     // The partial unique index on projects(channel_id) WHERE status = 'active' is the
     // real guard against a second active project in the same channel; this catch just
@@ -80,7 +80,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const payloadUrlNote = env.PUBLIC_BASE_URL ? "" : " (prepend your host — `PUBLIC_BASE_URL` isn't set)";
 
   // Ephemeral + separate from the announcement above: this secret lets anyone forge
-  // webhook payloads if it leaks, so only the admin who ran the command should see it.
+  // webhook payloads if it leaks, so only the team lead who ran the command should see it.
   await interaction.followUp({
     content: [
       "**GitHub webhook setup** (only you can see this — save the secret now, it won't be shown again):",

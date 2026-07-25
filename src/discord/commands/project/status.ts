@@ -2,7 +2,8 @@ import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from 
 import { MessageFlags } from "discord.js";
 
 import { db, getActiveProject } from "@/db";
-import { NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
+import { isTeamLead } from "@/discord/authorization";
+import { NO_ACTIVE_PROJECT, NOT_TEAM_LEAD } from "@/discord/commands/constants";
 import type { TaskStatus } from "@/types";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
@@ -17,6 +18,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       content: NO_ACTIVE_PROJECT,
       flags: MessageFlags.Ephemeral,
     });
+    return;
+  }
+
+  if (!isTeamLead(interaction, project)) {
+    await interaction.reply({ content: NOT_TEAM_LEAD, flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -38,6 +44,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     [
       `**${project.title}** — \`${project.github_repo}\``,
       `Unclaimed: ${countFor("unclaimed")} · Claimed: ${countFor("claimed")} · Done: ${countFor("done")}`,
+      `Team lead: <@${project.team_lead}>`,
       `Timeline: ${timeline}`,
       `Rulebook: ${rulebook}`,
     ].join("\n"),

@@ -2,8 +2,9 @@ import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from 
 import { MessageFlags } from "discord.js";
 
 import { db, getActiveProject } from "@/db";
+import { isTeamLead } from "@/discord/authorization";
 import { unpinBoard } from "@/discord/board";
-import { NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
+import { NO_ACTIVE_PROJECT, NOT_TEAM_LEAD } from "@/discord/commands/constants";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
   return sub.setName("end").setDescription("End the active project in this channel (archives its data)");
@@ -17,6 +18,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       content: NO_ACTIVE_PROJECT,
       flags: MessageFlags.Ephemeral,
     });
+    return;
+  }
+
+  if (!isTeamLead(interaction, project)) {
+    await interaction.reply({ content: NOT_TEAM_LEAD, flags: MessageFlags.Ephemeral });
     return;
   }
 
