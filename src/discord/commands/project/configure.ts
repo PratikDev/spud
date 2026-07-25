@@ -1,10 +1,10 @@
-import * as chrono from "chrono-node";
 import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import { MessageFlags } from "discord.js";
 
 import { db, getActiveProject } from "@/db";
 import { isTeamLead } from "@/discord/authorization";
 import { NO_ACTIVE_PROJECT, NOT_TEAM_LEAD } from "@/discord/commands/constants";
+import { parseWhen } from "@/utils/dates";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
   return sub
@@ -19,13 +19,6 @@ export function data(sub: SlashCommandSubcommandBuilder) {
       opt.setName("end-time").setDescription("When the hackathon officially ends, e.g. 'July 27 6pm'"),
     )
     .addAttachmentOption((opt) => opt.setName("rulebook").setDescription("Rulebook file for this hackathon"));
-}
-
-// No multi-timezone support: natural-language dates are parsed relative to whatever
-// timezone this process runs in. Fine for a single team, not for distributed ones.
-function parseWhen(text: string, now: Date): number | null {
-  const parsed = chrono.parseDate(text, now, { forwardDate: true });
-  return parsed ? Math.floor(parsed.getTime() / 1000) : null;
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
