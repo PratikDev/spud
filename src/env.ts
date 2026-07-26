@@ -1,6 +1,13 @@
+import { createLogger } from "@/logger";
+
+const log = createLogger("env");
+
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`Missing required env var: ${name}`);
+  if (!value) {
+    log.error("Missing required env var", { name });
+    throw new Error(`Missing required env var: ${name}`);
+  }
   return value;
 }
 
@@ -18,3 +25,5 @@ export const env = {
   PORT: Number(optionalEnv("PORT") ?? 3000),
   PUBLIC_BASE_URL: optionalEnv("PUBLIC_BASE_URL"),
 };
+
+log.info("Environment loaded", { port: env.PORT, publicBaseUrlSet: Boolean(env.PUBLIC_BASE_URL) });

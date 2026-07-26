@@ -1,8 +1,11 @@
 import type { AutocompleteInteraction } from "discord.js";
 
 import { getActiveProject } from "@/db";
+import { createLogger } from "@/logger";
 import { getTasksForProject, listTasksByStatus } from "@/tasks";
 import type { TaskStatus } from "@/types";
+
+const log = createLogger("discord/autocomplete");
 
 // "description": suggest+match on the task description, name === value (used by /claim).
 // "branch": suggest+match on the branch ID, showing the description alongside it
@@ -16,6 +19,7 @@ export async function respondWithTaskAutocomplete(
 ) {
   const project = getActiveProject(interaction.channelId);
   if (!project) {
+    log.debug("No active project — responding with empty autocomplete", { channelId: interaction.channelId });
     await interaction.respond([]);
     return;
   }
@@ -33,5 +37,6 @@ export async function respondWithTaskAutocomplete(
         : { name: `${task.branch_id} - ${task.description}`.slice(0, 100), value: task.branch_id },
     );
 
+  log.debug("Responded with autocomplete matches", { projectId: project.id, status, matchField, count: matches.length });
   await interaction.respond(matches);
 }

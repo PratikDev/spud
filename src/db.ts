@@ -1,10 +1,15 @@
 import { Database } from "bun:sqlite";
 
+import { createLogger } from "@/logger";
 import type { Project } from "@/types";
 
-export const db = new Database(process.env.DATABASE_PATH ?? "spud.sqlite");
+const log = createLogger("db");
+
+const databasePath = process.env.DATABASE_PATH ?? "spud.sqlite";
+export const db = new Database(databasePath);
 
 db.run("PRAGMA journal_mode = WAL;");
+log.info("Database ready", { path: databasePath });
 
 db.run(`
   CREATE TABLE IF NOT EXISTS projects (
@@ -50,10 +55,11 @@ db.run(`
 // Shared by every command that only makes sense in the context of "the active
 // project in this channel" (project end/status, and later the claim board commands).
 export function getActiveProject(channelId: string): Project | null {
-  return (
+  const project =
     (db.query("SELECT * FROM projects WHERE channel_id = ? AND status = 'active'").get(channelId) as Project | null) ??
-    null
-  );
+    null;
+  log.debug(project ? "Found active project for channel" : "No active project for channel", { channelId });
+  return project;
 }
 
 // Used by the GitHub webhook handler, which only has {public_id} from the URL —
@@ -62,5 +68,7 @@ export function getActiveProject(channelId: string): Project | null {
 // public_id (not the internal auto-increment id) is used here since it's exposed
 // in the webhook payload URL and shouldn't reveal a guessable sequential number.
 export function getProjectByPublicId(publicId: string): Project | null {
-  return (db.query("SELECT * FROM projects WHERE public_id = ?").get(publicId) as Project | null) ?? null;
+  const project = (db.query("SELECT * FROM projects WHERE public_id = ?").get(publicId) as Project | null) ?? null;
+  log.debug(project ? "Found project by public id" : "No project found by public id", { publicId });
+  return project;
 }

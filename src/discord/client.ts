@@ -1,30 +1,37 @@
 import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 
 import { env } from "@/env";
+import { createLogger } from "@/logger";
 import { commands } from "./commands";
+
+const log = createLogger("discord/client");
 
 export const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
 client.once(Events.ClientReady, (readyClient) => {
-  console.log(`Logged in as ${readyClient.user.tag}`);
+  log.info("Logged in", { tag: readyClient.user.tag });
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand() && !interaction.isAutocomplete()) return;
 
   const command = commands.find((c) => c.data.name === interaction.commandName);
-  if (!command) return;
+  if (!command) {
+    log.warn("No handler registered for command", { commandName: interaction.commandName });
+    return;
+  }
 
   try {
     if (interaction.isChatInputCommand()) {
       await command.execute(interaction);
+      log.info("Executed command", { commandName: interaction.commandName, userId: interaction.user.id });
     } else if (command.autocomplete) {
       await command.autocomplete(interaction);
     }
   } catch (error) {
-    console.error(`Error handling /${interaction.commandName}:`, error);
+    log.error("Error handling command", { commandName: interaction.commandName, error: String(error) });
     if (!interaction.isChatInputCommand()) return;
 
     const reply = { content: "Something went wrong running that command.", flags: MessageFlags.Ephemeral } as const;
@@ -37,5 +44,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 export function startDiscordClient() {
+  log.info("Logging in to Discord");
   return client.login(env.DISCORD_TOKEN);
 }

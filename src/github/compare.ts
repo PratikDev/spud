@@ -1,12 +1,17 @@
+import { createLogger } from "@/logger";
+
+const log = createLogger("github/compare");
 
 const GITHUB_API = "https://api.github.com";
 
-export async function getDefaultBranch(owner: string, repo: string): Promise<string> {
-  const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`);
+export async function getDefaultBranch(githubRepo: string): Promise<string> {
+  const response = await fetch(`${GITHUB_API}/repos/${githubRepo}`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch repo ${owner}/${repo}: ${response.status}`);
+    log.error("Failed to fetch repo", { githubRepo, status: response.status });
+    throw new Error(`Failed to fetch repo ${githubRepo}: ${response.status}`);
   }
   const data = (await response.json()) as { default_branch: string };
+  log.info("Fetched default branch", { githubRepo, defaultBranch: data.default_branch });
   return data.default_branch;
 }
 
@@ -20,8 +25,10 @@ export interface ChangedFile {
 export async function compareBranches(owner: string, repo: string, base: string, head: string): Promise<ChangedFile[]> {
   const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/compare/${base}...${head}`);
   if (!response.ok) {
+    log.error("Failed to compare branches", { owner, repo, base, head, status: response.status });
     throw new Error(`Failed to compare ${base}...${head} on ${owner}/${repo}: ${response.status}`);
   }
   const data = (await response.json()) as { files?: { filename: string; status: string }[] };
+  log.info("Compared branches", { owner, repo, base, head, changedFiles: data.files?.length ?? 0 });
   return (data.files ?? []).map((file) => ({ filename: file.filename, status: file.status }));
 }

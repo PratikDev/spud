@@ -50,17 +50,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const { title, githubRepo } = parsed.data;
   const webhookSecret = randomBytes(32).toString("hex");
 
-  const [owner, repo] = githubRepo.split("/");
-  if (!owner || !repo) {
-    await interaction.reply({ content: `Invalid input: \`${githubRepo}\` isn't in owner/repo format.`, flags: MessageFlags.Ephemeral });
-    return;
-  }
-
   let defaultBranch: string;
   try {
     // Fetched once here and cached on the project row, rather than re-fetched on
     // every push — also doubles as an early check that the repo actually exists.
-    defaultBranch = await getDefaultBranch(owner, repo);
+    defaultBranch = await getDefaultBranch(githubRepo);
   } catch {
     await interaction.reply({
       content: `Couldn't reach \`${githubRepo}\` on GitHub — check that it exists and is public.`,

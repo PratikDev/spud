@@ -3,6 +3,9 @@ import { z } from "zod";
 
 import { model } from "@/llm/client";
 import { CLAIM_ANALYSIS_SYSTEM_PROMPT } from "@/llm/prompts/claim-analysis";
+import { createLogger } from "@/logger";
+
+const log = createLogger("llm/claim-analysis");
 
 const outputSchema = z.object({
   overlappingTask: z
@@ -23,14 +26,24 @@ export async function analyzeClaim(description: string, claimedDescriptions: str
       ? `Already-claimed task descriptions on this project:\n${claimedDescriptions.map((d) => `- ${d}`).join("\n")}`
       : "There are no currently claimed tasks on this project.";
 
-  const { output } = await generateText({
-    model,
-    output: Output.object({
-      schema: outputSchema,
-    }),
-    system: CLAIM_ANALYSIS_SYSTEM_PROMPT,
-    prompt: `New task description: "${description}"\n\n${claimedList}`,
-  });
+  try {
+    const { output } = await generateText({
+      model,
+      output: Output.object({
+        schema: outputSchema,
+      }),
+      system: CLAIM_ANALYSIS_SYSTEM_PROMPT,
+      prompt: `New task description: "${description}"\n\n${claimedList}`,
+    });
 
-  return output;
+    log.info("Analyzed claim", {
+      description,
+      overlappingTask: output.overlappingTask,
+      branchName: output.branchName,
+    });
+    return output;
+  } catch (error) {
+    log.error("Failed to analyze claim", { description, error: String(error) });
+    throw error;
+  }
 }
