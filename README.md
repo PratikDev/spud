@@ -49,13 +49,19 @@ Claiming an *existing* unclaimed task skips all of this — no LLM call, no new 
 
 Catches "vibe coding" drift — claiming "auth" but also touching unrelated files — without anyone self-reporting.
 
-- On `/project start`, a webhook secret is generated and shown to the admin (ephemeral, once) along with the payload URL, content type, and which event to select in GitHub's **Settings → Webhooks → Add webhook**.
-- On every `push`, the bot fetches the repo's actual default branch (not a hardcoded `main` — plenty of repos still use `master`) and diffs it against the pushed branch via GitHub's compare API.
+- On `/project start`, the repo's default branch (not a hardcoded `main` — plenty of repos still use `master`) is fetched once and cached on the project row, and a webhook secret is generated and shown to the team lead (ephemeral, once) along with the payload URL, content type, and which events to select in GitHub's **Settings → Webhooks → Add webhook**.
+- On every `push` whose branch isn't the cached default branch, the bot diffs it against that default branch via GitHub's compare API — pushes to the default branch itself are ignored before any database lookup, since they can never be a task's working branch.
 - If the branch matches a currently-*claimed* task, the changed files + task description go to Gemini ([`llm/drift.ts`](src/llm/drift.ts)), which judges whether the diff still looks consistent with the task — biased toward not flagging, since a false alarm costs more trust than a missed one.
 - If flagged, the bot posts a nudge in the project's channel naming the unexpected files.
 - On the webhook's first `ping` event (sent automatically when GitHub adds the hook), the bot posts a one-time confirmation in the channel that the integration is live.
 - Pushes on a branch with no matching claimed task are silently ignored — nothing breaks, it just doesn't get scope-checked.
 - GitHub API calls are unauthenticated, so **the linked repo must be public**.
+
+### Auto-close on merge (GitHub webhook)
+
+- On a `pull_request` event with `action: closed` and `merged: true`, the bot reads the merged branch straight off the payload (`pull_request.head.ref`) — no extra API call needed.
+- If that branch matches a currently-*claimed* task, the task is marked done automatically and the board updates, with a confirmation posted in the channel naming the PR.
+- **Only detects merges done through GitHub's own merge/squash/rebase button** (i.e. via a pull request). A team that merges locally and pushes straight to the default branch won't trigger this — that push is a default-branch push, which is deliberately ignored (see above).
 
 ## Architecture
 
@@ -67,7 +73,7 @@ flowchart LR
     Discord <--> Spud["Spud\n(single Bun process)"]
     Spud <--> DB[("SQLite")]
     Spud <--> Gemini["Gemini"]
-    GitHub["GitHub"] -->|push / ping webhook| Spud
+    GitHub["GitHub"] -->|push / pull_request / ping webhook| Spud
     Spud -->|compare API| GitHub
 ```
 
@@ -91,17 +97,28 @@ sequenceDiagram
         HTTP-->>GH: 200
         HTTP->>Discord: "webhook connected successfully"
     else push event
-        HTTP->>DB: find claimed task by branch name
-        alt no matching claimed task
-            HTTP-->>GH: 200 (no-op)
-        else task found
-            HTTP->>API: get default branch, then compare(default, branch)
-            HTTP->>LLM: task description + changed files -> isDrifted?
-            alt drifted
-                HTTP->>Discord: nudge naming the unexpected files
+        alt branch is the cached default branch
+            HTTP-->>GH: 200 (no-op, no DB lookup)
+        else
+            HTTP->>DB: find claimed task by branch name
+            alt no matching claimed task
+                HTTP-->>GH: 200 (no-op)
+            else task found
+                HTTP->>API: compare(cached default branch, branch)
+                HTTP->>LLM: task description + changed files -> isDrifted?
+                alt drifted
+                    HTTP->>Discord: nudge naming the unexpected files
+                end
+                HTTP-->>GH: 200
             end
-            HTTP-->>GH: 200
         end
+    else pull_request event (closed + merged)
+        HTTP->>DB: find claimed task by merged branch name
+        alt task found
+            HTTP->>DB: mark task done
+            HTTP->>Discord: board update + merge confirmation
+        end
+        HTTP-->>GH: 200
     end
 ```
 
@@ -219,5 +236,6 @@ src/
 - **Branch names must match exactly** — `/done`, `/free`, `/delete`, and drift-checking all key off the exact branch name the bot generated. Push to a differently-named branch and it's silently never scope-checked — by design, not a crash.
 - **Single instance only** — one SQLite file and one Discord gateway connection per process; this isn't built to run as multiple replicas behind a load balancer.
 - **No schema migrations** — schema changes are hand-written `CREATE TABLE`/column edits with no migration tool. Given the "OK to lose data" stance that's intentional, but existing rows won't pick up new columns without a fresh database.
-- **No multi-timezone support** — `/project configure`'s natural-language timeline input (via `chrono-node`) is parsed relative to the bot process's own local time, not per-user. Fine for a single co-located team, not for a distributed one.
+- **No multi-timezone support** — `/project configure`'s natural-language timeline input (via `chrono-node`) is always parsed as Bangladesh Standard Time (UTC+6), regardless of who's typing or where the bot runs. Fine for a single BD-based team, not for a distributed one.
 - **Team lead has no reassignment path** — `/project configure`, `/project end`, and `/project status` are gated to the team lead (whoever ran `/project start`) with no admin override. If that person leaves the server, those subcommands become permanently unusable for that project — there's no command to reassign team lead and no migration tool to patch the `team_lead` column by hand.
+- **Default branch is cached, not re-checked** — the repo's default branch is fetched once at `/project start` and reused for every push/drift comparison after that. If the repo's default branch is renamed later (e.g. `master` → `main`), the project won't notice — the only fix is ending and restarting the project.

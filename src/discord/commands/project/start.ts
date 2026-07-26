@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db, getActiveProject } from "@/db";
 import { updateBoard } from "@/discord/board";
 import { env } from "@/env";
+import { getDefaultBranch } from "@/github/compare";
 
 const inputSchema = z.object({
   title: z.string().trim().nonempty().max(200, "title must be 200 characters or fewer"),
@@ -49,11 +50,30 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const { title, githubRepo } = parsed.data;
   const webhookSecret = randomBytes(32).toString("hex");
 
+  const [owner, repo] = githubRepo.split("/");
+  if (!owner || !repo) {
+    await interaction.reply({ content: `Invalid input: \`${githubRepo}\` isn't in owner/repo format.`, flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  let defaultBranch: string;
+  try {
+    // Fetched once here and cached on the project row, rather than re-fetched on
+    // every push — also doubles as an early check that the repo actually exists.
+    defaultBranch = await getDefaultBranch(owner, repo);
+  } catch {
+    await interaction.reply({
+      content: `Couldn't reach \`${githubRepo}\` on GitHub — check that it exists and is public.`,
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
   try {
     db.query(
-      `INSERT INTO projects (channel_id, guild_id, title, github_repo, webhook_secret, team_lead)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(interaction.channelId, interaction.guildId, title, githubRepo, webhookSecret, interaction.user.id);
+      `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, webhook_secret, team_lead)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(interaction.channelId, interaction.guildId, title, githubRepo, defaultBranch, webhookSecret, interaction.user.id);
   } catch (error) {
     // The partial unique index on projects(channel_id) WHERE status = 'active' is the
     // real guard against a second active project in the same channel; this catch just
@@ -87,7 +107,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       `- Payload URL: \`${payloadUrl}\`${payloadUrlNote}`,
       "- Content type: `application/json`",
       `- Secret: \`${webhookSecret}\``,
-      "- Events: just the `push` event",
+      "- Events: `push` and `pull_request` (select individual events, not \"Send me everything\")",
       "",
       "Add this under the repo's **Settings → Webhooks → Add webhook**.",
       "",

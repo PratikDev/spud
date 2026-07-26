@@ -14,6 +14,7 @@ db.run(`
     guild_id TEXT NOT NULL,
     title TEXT NOT NULL,
     github_repo TEXT NOT NULL,
+    default_branch TEXT NOT NULL,
     webhook_secret TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('active', 'ended')) DEFAULT 'active',
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),

@@ -7,7 +7,7 @@
       "dependencies": {
         "@ai-sdk/google": "^4.0.18",
         "ai": "^7.0.31",
-        "chrono-node": "^2.9.0",
+        "chrono-node": "^2.10.1",
         "discord.js": "^14.27.0",
         "zod": "^4.4.3",
       },

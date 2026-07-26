@@ -8,6 +8,7 @@ export interface Project {
   guild_id: string;
   title: string;
   github_repo: string;
+  default_branch: string;
   webhook_secret: string;
   status: ProjectStatus;
   created_at: number;

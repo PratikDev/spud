@@ -1,10 +1,11 @@
 import { getProjectByPublicId } from "@/db";
+import { updateBoard } from "@/discord/board";
 import { client } from "@/discord/client";
 import { env } from "@/env";
-import { compareBranches, getDefaultBranch } from "@/github/compare";
+import { compareBranches } from "@/github/compare";
 import { verifySignature } from "@/github/verify";
 import { analyzeDrift } from "@/llm/drift";
-import { findTaskByBranch } from "@/tasks";
+import { findTaskByBranch, markTaskDone } from "@/tasks";
 import type { Project } from "@/types";
 
 // GitHub sends a "ping" event the moment a webhook is added — post the success
@@ -26,14 +27,15 @@ async function processPushEvent(project: Project, request: Request, rawBody: str
   if (!payload.ref?.startsWith("refs/heads/")) return;
 
   const branchId = payload.ref.slice("refs/heads/".length);
+  if (branchId === project.default_branch) return;
+
   const task = findTaskByBranch(project.id, branchId);
   if (!task || task.status !== "claimed") return;
 
   const [owner, repo] = project.github_repo.split("/");
   if (!owner || !repo) return;
 
-  const defaultBranch = await getDefaultBranch(owner, repo);
-  const changedFiles = await compareBranches(owner, repo, defaultBranch, branchId);
+  const changedFiles = await compareBranches(owner, repo, project.default_branch, branchId);
   if (changedFiles.length === 0) return;
 
   const drift = await analyzeDrift(task.description, changedFiles);
@@ -46,6 +48,33 @@ async function processPushEvent(project: Project, request: Request, rawBody: str
   const reasonSuffix = drift.reason ? ` (${drift.reason})` : "";
   await channel.send(
     `Hey <@${task.owner}> — your branch \`${branchId}\` also touches ${fileList}. Still just working on **${task.description}**?${reasonSuffix}`,
+  );
+}
+
+// GitHub's pull_request "closed" action fires both for merges and plain closes —
+// only `merged: true` means the branch's work actually landed on the default branch.
+async function processPullRequestEvent(project: Project, rawBody: string) {
+  if (project.status !== "active") return;
+
+  const payload = JSON.parse(rawBody) as {
+    action?: string;
+    pull_request?: { number: number; merged: boolean; head: { ref: string } };
+  };
+
+  if (payload.action !== "closed" || !payload.pull_request?.merged) return;
+
+  const branchId = payload.pull_request.head.ref;
+  const task = findTaskByBranch(project.id, branchId);
+  if (!task || task.status !== "claimed") return;
+
+  markTaskDone(task.id);
+  await updateBoard(client, project);
+
+  const channel = await client.channels.fetch(project.channel_id);
+  if (!channel?.isTextBased() || !("send" in channel)) return;
+
+  await channel.send(
+    `✅ <@${task.owner}>'s task **${task.description}** was merged via \`${branchId}\` (PR #${payload.pull_request.number}) and marked done.`,
   );
 }
 
@@ -68,6 +97,8 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
       await notifyWebhookConnected(project);
     } else if (githubEvent === "push") {
       await processPushEvent(project, req, rawBody);
+    } else if (githubEvent === "pull_request") {
+      await processPullRequestEvent(project, rawBody);
     }
   } catch (error) {
     console.error(`Error processing webhook for project ${project.id}:`, error);
