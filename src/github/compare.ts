@@ -7,7 +7,12 @@ const GITHUB_API = "https://api.github.com";
 export async function getDefaultBranch(githubRepo: string): Promise<string> {
   const response = await fetch(`${GITHUB_API}/repos/${githubRepo}`);
   if (!response.ok) {
-    log.error("Failed to fetch repo", { githubRepo, status: response.status });
+    log.error("Failed to fetch repo", {
+      githubRepo,
+      status: response.status,
+      rateLimitRemaining: response.headers.get("x-ratelimit-remaining"),
+      body: await response.text(),
+    });
     throw new Error(`Failed to fetch repo ${githubRepo}: ${response.status}`);
   }
   const data = (await response.json()) as { default_branch: string };
@@ -25,7 +30,15 @@ export interface ChangedFile {
 export async function compareBranches(owner: string, repo: string, base: string, head: string): Promise<ChangedFile[]> {
   const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/compare/${base}...${head}`);
   if (!response.ok) {
-    log.error("Failed to compare branches", { owner, repo, base, head, status: response.status });
+    log.error("Failed to compare branches", {
+      owner,
+      repo,
+      base,
+      head,
+      status: response.status,
+      rateLimitRemaining: response.headers.get("x-ratelimit-remaining"),
+      body: await response.text(),
+    });
     throw new Error(`Failed to compare ${base}...${head} on ${owner}/${repo}: ${response.status}`);
   }
   const data = (await response.json()) as { files?: { filename: string; status: string }[] };
