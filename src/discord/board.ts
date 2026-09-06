@@ -35,7 +35,7 @@ export function buildBoardEmbed(project: Project, tasks: Task[]) {
 }
 
 export async function updateBoard(client: Client, project: Project) {
-  const embed = buildBoardEmbed(project, getTasksForProject(project.id));
+  const embed = buildBoardEmbed(project, await getTasksForProject(project.id));
   const channel = await client.channels.fetch(project.channel_id);
   if (!channel?.isTextBased() || !("send" in channel)) {
     log.warn("Could not update board — channel not sendable", { projectId: project.id });
@@ -63,7 +63,7 @@ export async function updateBoard(client: Client, project: Project) {
     // The board still gets created/edited either way, just not pinned.
     log.warn("Failed to pin board message", { projectId: project.id, error: String(error) });
   }
-  db.query("UPDATE projects SET board_message_id = ? WHERE id = ?").run(message.id, project.id);
+  await db.execute({ sql: "UPDATE projects SET board_message_id = ? WHERE id = ?", args: [message.id, project.id] });
   project.board_message_id = message.id;
   log.info("Created board message", { projectId: project.id, messageId: message.id });
 }

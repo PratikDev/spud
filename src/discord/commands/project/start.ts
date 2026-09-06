@@ -1,4 +1,4 @@
-import { SQLiteError } from "bun:sqlite";
+import { LibsqlError } from "@libsql/client";
 import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import { MessageFlags } from "discord.js";
 import { randomBytes } from "node:crypto";
@@ -64,15 +64,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   try {
-    db.query(
-      `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, webhook_secret, team_lead)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).run(interaction.channelId, interaction.guildId, title, githubRepo, defaultBranch, webhookSecret, interaction.user.id);
+    await db.execute({
+      sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, webhook_secret, team_lead)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [interaction.channelId, interaction.guildId, title, githubRepo, defaultBranch, webhookSecret, interaction.user.id],
+    });
   } catch (error) {
     // The partial unique index on projects(channel_id) WHERE status = 'active' is the
     // real guard against a second active project in the same channel; this catch just
     // turns that DB-level rejection into a friendly reply instead of a raw 500.
-    if (error instanceof SQLiteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+    if (error instanceof LibsqlError && error.extendedCode === "SQLITE_CONSTRAINT_UNIQUE") {
       await interaction.reply({
         content: `This channel already has an active project. Run \`/project end\` first.`,
         flags: MessageFlags.Ephemeral,
@@ -84,7 +85,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   await interaction.reply(`Started project **${title}**, linked to \`${githubRepo}\`. This channel's board is now active.`);
 
-  const project = getActiveProject(interaction.channelId);
+  const project = await getActiveProject(interaction.channelId);
   if (project) {
     await updateBoard(interaction.client, project);
   }

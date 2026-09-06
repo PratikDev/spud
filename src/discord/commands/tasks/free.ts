@@ -21,14 +21,14 @@ export const free: Command = {
     ),
 
   async execute(interaction) {
-    const project = getActiveProject(interaction.channelId);
+    const project = await getActiveProject(interaction.channelId);
     if (!project) {
       await interaction.reply({ content: NO_ACTIVE_PROJECT, flags: MessageFlags.Ephemeral });
       return;
     }
 
     const branchId = interaction.options.getString("branch", true).trim();
-    const task = findTaskByBranch(project.id, branchId);
+    const task = await findTaskByBranch(project.id, branchId);
 
     if (!task || task.status !== "claimed") {
       await interaction.reply({
@@ -43,7 +43,7 @@ export const free: Command = {
       return;
     }
 
-    freeTask(task.id);
+    await freeTask(task.id);
     await updateBoard(interaction.client, project);
     await interaction.reply(`Freed **${task.description}** (\`${task.branch_id}\`) back to unclaimed.`);
   },

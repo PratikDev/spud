@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.18",
+    "@libsql/client": "^0.18.0",
     "ai": "^7.0.31",
     "chrono-node": "^2.10.1",
     "discord.js": "^14.27.0",

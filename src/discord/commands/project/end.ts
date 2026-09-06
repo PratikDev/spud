@@ -11,7 +11,7 @@ export function data(sub: SlashCommandSubcommandBuilder) {
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  const project = getActiveProject(interaction.channelId);
+  const project = await getActiveProject(interaction.channelId);
 
   if (!project) {
     await interaction.reply({
@@ -26,7 +26,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  db.query("UPDATE projects SET status = 'ended', ended_at = strftime('%s', 'now') WHERE id = ?").run(project.id);
+  await db.execute({
+    sql: "UPDATE projects SET status = 'ended', ended_at = strftime('%s', 'now') WHERE id = ?",
+    args: [project.id],
+  });
   await unpinBoard(interaction.client, project);
 
   await interaction.reply(`Ended project **${project.title}**. Its board and task history are archived, not deleted.`);

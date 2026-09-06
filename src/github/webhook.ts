@@ -45,7 +45,7 @@ async function processPushEvent(project: Project, request: Request, rawBody: str
     return;
   }
 
-  const task = findTaskByBranch(project.id, branchId);
+  const task = await findTaskByBranch(project.id, branchId);
   if (!task || task.status !== "claimed") {
     log.debug("Ignoring push — no claimed task for branch", { projectId: project.id, branchId });
     return;
@@ -102,13 +102,13 @@ async function processPullRequestEvent(project: Project, rawBody: string) {
   }
 
   const branchId = payload.pull_request.head.ref;
-  const task = findTaskByBranch(project.id, branchId);
+  const task = await findTaskByBranch(project.id, branchId);
   if (!task || task.status !== "claimed") {
     log.debug("Ignoring merge — no claimed task for branch", { projectId: project.id, branchId });
     return;
   }
 
-  markTaskDone(task.id);
+  await markTaskDone(task.id);
   await updateBoard(client, project);
 
   const channel = await client.channels.fetch(project.channel_id);
@@ -124,7 +124,7 @@ async function processPullRequestEvent(project: Project, rawBody: string) {
 }
 
 export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github/:projectId">): Promise<Response> {
-  const project = getProjectByPublicId(req.params.projectId);
+  const project = await getProjectByPublicId(req.params.projectId);
   if (!project) {
     log.warn("Webhook request for unknown project", { publicId: req.params.projectId });
     return new Response("Not found", { status: 404 });

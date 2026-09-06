@@ -17,14 +17,14 @@ export const deleteTaskCommand: Command = {
     ),
 
   async execute(interaction) {
-    const project = getActiveProject(interaction.channelId);
+    const project = await getActiveProject(interaction.channelId);
     if (!project) {
       await interaction.reply({ content: NO_ACTIVE_PROJECT, flags: MessageFlags.Ephemeral });
       return;
     }
 
     const branchId = interaction.options.getString("branch", true).trim();
-    const task = findTaskByBranch(project.id, branchId);
+    const task = await findTaskByBranch(project.id, branchId);
 
     if (!task) {
       await interaction.reply({
@@ -39,7 +39,7 @@ export const deleteTaskCommand: Command = {
       return;
     }
 
-    deleteTask(task.id);
+    await deleteTask(task.id);
     await updateBoard(interaction.client, project);
     await interaction.reply(`Deleted task **${task.description}** (\`${task.branch_id}\`).`);
   },

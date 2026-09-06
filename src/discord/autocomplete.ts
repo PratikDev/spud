@@ -17,7 +17,7 @@ export async function respondWithTaskAutocomplete(
   status: TaskStatus | undefined,
   matchField: MatchField = "branch",
 ) {
-  const project = getActiveProject(interaction.channelId);
+  const project = await getActiveProject(interaction.channelId);
   if (!project) {
     log.debug("No active project — responding with empty autocomplete", { channelId: interaction.channelId });
     await interaction.respond([]);
@@ -26,7 +26,7 @@ export async function respondWithTaskAutocomplete(
 
   const focused = interaction.options.getFocused().toLowerCase();
 
-  const tasks = status ? listTasksByStatus(project.id, status) : getTasksForProject(project.id);
+  const tasks = status ? await listTasksByStatus(project.id, status) : await getTasksForProject(project.id);
 
   const matches = tasks
     .filter((task) => (matchField === "description" ? task.description : task.branch_id).toLowerCase().includes(focused))
