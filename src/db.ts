@@ -1,17 +1,20 @@
-import { Database } from "bun:sqlite";
+import { createClient } from "@libsql/client";
 
+import { env } from "@/env";
 import { createLogger } from "@/logger";
 import type { Project } from "@/types";
 
 const log = createLogger("db");
 
-const databasePath = process.env.DATABASE_PATH ?? "spud.sqlite";
-export const db = new Database(databasePath);
+const databaseUrl = env.TURSO_DATABASE_URL ?? `file:${env.DATABASE_PATH}`;
+export const db = createClient({ url: databaseUrl, authToken: env.TURSO_AUTH_TOKEN });
 
-db.run("PRAGMA journal_mode = WAL;");
-log.info("Database ready", { path: databasePath });
+if (databaseUrl.startsWith("file:")) {
+  await db.execute("PRAGMA journal_mode = WAL;");
+}
+log.info("Database ready", { url: databaseUrl });
 
-db.run(`
+await db.execute(`
   CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     public_id TEXT NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
@@ -33,13 +36,13 @@ db.run(`
 `);
 
 // enforces "at most one active project per channel" at the DB level
-db.run(`
+await db.execute(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_active_per_channel
   ON projects (channel_id)
   WHERE status = 'active';
 `);
 
-db.run(`
+await db.execute(`
   CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     branch_id TEXT NOT NULL,
@@ -54,10 +57,12 @@ db.run(`
 
 // Shared by every command that only makes sense in the context of "the active
 // project in this channel" (project end/status, and later the claim board commands).
-export function getActiveProject(channelId: string): Project | null {
-  const project =
-    (db.query("SELECT * FROM projects WHERE channel_id = ? AND status = 'active'").get(channelId) as Project | null) ??
-    null;
+export async function getActiveProject(channelId: string): Promise<Project | null> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM projects WHERE channel_id = ? AND status = 'active'",
+    args: [channelId],
+  });
+  const project = (rs.rows[0] as unknown as Project | undefined) ?? null;
   log.debug(project ? "Found active project for channel" : "No active project for channel", { channelId });
   return project;
 }
@@ -67,8 +72,9 @@ export function getActiveProject(channelId: string): Project | null {
 // stray webhook traffic" case), so this doesn't filter by status like the one above.
 // public_id (not the internal auto-increment id) is used here since it's exposed
 // in the webhook payload URL and shouldn't reveal a guessable sequential number.
-export function getProjectByPublicId(publicId: string): Project | null {
-  const project = (db.query("SELECT * FROM projects WHERE public_id = ?").get(publicId) as Project | null) ?? null;
+export async function getProjectByPublicId(publicId: string): Promise<Project | null> {
+  const rs = await db.execute({ sql: "SELECT * FROM projects WHERE public_id = ?", args: [publicId] });
+  const project = (rs.rows[0] as unknown as Project | undefined) ?? null;
   log.debug(project ? "Found project by public id" : "No project found by public id", { publicId });
   return project;
 }
