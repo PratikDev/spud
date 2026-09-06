@@ -24,6 +24,11 @@ export const env = {
   // and PUBLIC_BASE_URL is only used for display.
   PORT: Number(optionalEnv("PORT") ?? 3000),
   PUBLIC_BASE_URL: optionalEnv("PUBLIC_BASE_URL"),
+  // Turso — optional: db.ts falls back to a local SQLite file (DATABASE_PATH,
+  // itself defaulting to "spud.sqlite") when TURSO_DATABASE_URL is unset.
+  TURSO_DATABASE_URL: optionalEnv("TURSO_DATABASE_URL"),
+  TURSO_AUTH_TOKEN: optionalEnv("TURSO_AUTH_TOKEN"),
+  DATABASE_PATH: optionalEnv("DATABASE_PATH") ?? "spud.sqlite",
 };
 
 log.info("Environment loaded", { port: env.PORT, publicBaseUrlSet: Boolean(env.PUBLIC_BASE_URL) });
