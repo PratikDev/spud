@@ -139,8 +139,10 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
   // Only reachable once signature verification passes, so from here on we always
   // return 200 — GitHub treats non-2xx as a delivery failure and retries/flags
   // the webhook as unhealthy, which we don't want for our own no-op cases.
+  const startedAt = performance.now();
+  const githubEvent = req.headers.get("x-github-event");
+
   try {
-    const githubEvent = req.headers.get("x-github-event");
     log.debug("Handling webhook event", { projectId: project.id, githubEvent });
 
     if (githubEvent === "ping") {
@@ -153,9 +155,20 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
       log.debug("Ignoring unhandled webhook event", { projectId: project.id, githubEvent });
     }
   } catch (error) {
-    log.error("Error processing webhook", { projectId: project.id, error: String(error) });
+    log.error("Error processing webhook", {
+      projectId: project.id,
+      githubEvent,
+      durationMs: Math.round(performance.now() - startedAt),
+      error: String(error),
+    });
+    return new Response("OK", { status: 200 });
   }
 
+  log.info("Webhook request handled", {
+    projectId: project.id,
+    githubEvent,
+    durationMs: Math.round(performance.now() - startedAt),
+  });
   return new Response("OK", { status: 200 });
 }
 

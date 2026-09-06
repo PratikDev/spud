@@ -23,22 +23,37 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
+  const startedAt = performance.now();
+
   try {
     if (interaction.isChatInputCommand()) {
       await command.execute(interaction);
-      log.info("Executed command", { commandName: interaction.commandName, userId: interaction.user.id });
+      const durationMs = Math.round(performance.now() - startedAt);
+      log.info("Executed command",
+        {
+          commandName: interaction.commandName,
+          userId: interaction.user.id,
+          durationMs
+        }
+      );
     } else if (command.autocomplete) {
       await command.autocomplete(interaction);
     }
   } catch (error) {
-    log.error("Error handling command", { commandName: interaction.commandName, error: String(error) });
+    const durationMs = Math.round(performance.now() - startedAt);
+    log.error("Error handling command",
+      {
+        commandName: interaction.commandName,
+        durationMs,
+        error: String(error)
+      });
     if (!interaction.isChatInputCommand()) return;
 
     const reply = { content: "Something went wrong running that command.", flags: MessageFlags.Ephemeral } as const;
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(reply).catch(() => {});
+      await interaction.followUp(reply).catch(() => { });
     } else {
-      await interaction.reply(reply).catch(() => {});
+      await interaction.reply(reply).catch(() => { });
     }
   }
 });
