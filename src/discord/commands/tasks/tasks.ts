@@ -10,13 +10,13 @@ export const tasks: Command = {
   data: new SlashCommandBuilder().setName("tasks").setDescription("Show the current task board for this channel"),
 
   async execute(interaction) {
-    const project = getActiveProject(interaction.channelId);
+    const project = await getActiveProject(interaction.channelId);
     if (!project) {
       await interaction.reply({ content: NO_ACTIVE_PROJECT, flags: MessageFlags.Ephemeral });
       return;
     }
 
-    const embed = buildBoardEmbed(project, getTasksForProject(project.id));
+    const embed = buildBoardEmbed(project, await getTasksForProject(project.id));
     await interaction.reply({ embeds: [embed] });
   },
 };

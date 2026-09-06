@@ -21,14 +21,14 @@ export const done: Command = {
     ),
 
   async execute(interaction) {
-    const project = getActiveProject(interaction.channelId);
+    const project = await getActiveProject(interaction.channelId);
     if (!project) {
       await interaction.reply({ content: NO_ACTIVE_PROJECT, flags: MessageFlags.Ephemeral });
       return;
     }
 
     const branchId = interaction.options.getString("branch", true).trim();
-    const task = findTaskByBranch(project.id, branchId);
+    const task = await findTaskByBranch(project.id, branchId);
 
     if (!task || task.status !== "claimed") {
       await interaction.reply({
@@ -43,7 +43,7 @@ export const done: Command = {
       return;
     }
 
-    markTaskDone(task.id);
+    await markTaskDone(task.id);
     await updateBoard(interaction.client, project);
     await interaction.reply(`Marked **${task.description}** (\`${task.branch_id}\`) as done.`);
   },

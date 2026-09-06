@@ -21,9 +21,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const projects = db
-    .query("SELECT * FROM projects WHERE guild_id = ? AND status = 'active'")
-    .all(interaction.guildId) as Project[];
+  const rs = await db.execute({
+    sql: "SELECT * FROM projects WHERE guild_id = ? AND status = 'active'",
+    args: [interaction.guildId],
+  });
+  const projects = rs.rows as unknown as Project[];
 
   if (projects.length === 0) {
     await interaction.reply({ content: "No active projects in this server.", flags: MessageFlags.Ephemeral });

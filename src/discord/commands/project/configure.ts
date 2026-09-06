@@ -22,7 +22,7 @@ export function data(sub: SlashCommandSubcommandBuilder) {
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  const project = getActiveProject(interaction.channelId);
+  const project = await getActiveProject(interaction.channelId);
 
   if (!project) {
     await interaction.reply({ content: NO_ACTIVE_PROJECT, flags: MessageFlags.Ephemeral });
@@ -111,7 +111,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   params.push(project.id);
-  db.query(`UPDATE projects SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+  await db.execute({ sql: `UPDATE projects SET ${updates.join(", ")} WHERE id = ?`, args: params });
 
   const summary: string[] = [];
   if (startTimeText) summary.push(`Start: <t:${startTime}:F>`);

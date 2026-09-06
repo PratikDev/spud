@@ -11,7 +11,7 @@ export function data(sub: SlashCommandSubcommandBuilder) {
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  const project = getActiveProject(interaction.channelId);
+  const project = await getActiveProject(interaction.channelId);
 
   if (!project) {
     await interaction.reply({
@@ -26,9 +26,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const counts = db
-    .query("SELECT status, COUNT(*) as count FROM tasks WHERE project_id = ? GROUP BY status")
-    .all(project.id) as { status: TaskStatus; count: number }[];
+  const countsRs = await db.execute({
+    sql: "SELECT status, COUNT(*) as count FROM tasks WHERE project_id = ? GROUP BY status",
+    args: [project.id],
+  });
+  const counts = countsRs.rows as unknown as { status: TaskStatus; count: number }[];
 
   const countFor = (status: TaskStatus) => counts.find((row) => row.status === status)?.count ?? 0;
 

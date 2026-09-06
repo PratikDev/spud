@@ -22,7 +22,7 @@ export const claim: Command = {
     ),
 
   async execute(interaction) {
-    const project = getActiveProject(interaction.channelId);
+    const project = await getActiveProject(interaction.channelId);
     if (!project) {
       await interaction.reply({ content: NO_ACTIVE_PROJECT, flags: MessageFlags.Ephemeral });
       return;
@@ -37,15 +37,15 @@ export const claim: Command = {
     }
 
     const description = interaction.options.getString("description", true).trim();
-    const existing = findTaskByDescription(project.id, description, "unclaimed");
+    const existing = await findTaskByDescription(project.id, description, "unclaimed");
 
     let task: Task;
 
     if (existing) {
-      claimExistingTask(existing.id, interaction.user.id);
+      await claimExistingTask(existing.id, interaction.user.id);
       task = existing;
     } else {
-      const allTasks = getTasksForProject(project.id);
+      const allTasks = await getTasksForProject(project.id);
       const analysis = await analyzeClaim(
         description,
         allTasks.map((t) => t.description),
@@ -64,8 +64,8 @@ export const claim: Command = {
         return;
       }
 
-      const branchId = ensureUniqueBranchId(project.id, analysis.branchName);
-      task = createAndClaimTask(project.id, branchId, description, interaction.user.id);
+      const branchId = await ensureUniqueBranchId(project.id, analysis.branchName);
+      task = await createAndClaimTask(project.id, branchId, description, interaction.user.id);
     }
 
     await updateBoard(interaction.client, project);
