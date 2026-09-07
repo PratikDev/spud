@@ -53,6 +53,11 @@ async function processPushEvent(project: Project, rawBody: string) {
     return;
   }
 
+  if (!project.gemini_api_key) {
+    log.debug("Skipping drift check — no Gemini key configured", { projectId: project.id, branchId });
+    return;
+  }
+
   const [owner, repo] = project.github_repo.split("/");
   if (!owner || !repo) {
     log.error("Malformed github_repo on project", { projectId: project.id, githubRepo: project.github_repo });
@@ -65,7 +70,7 @@ async function processPushEvent(project: Project, rawBody: string) {
     return;
   }
 
-  const drift = await analyzeDrift(task.description, changedFiles);
+  const drift = await analyzeDrift(decrypt(project.gemini_api_key), task.description, changedFiles);
   if (!drift.isDrifted) {
     log.info("Push analyzed, no drift detected", { projectId: project.id, branchId, taskId: task.id });
     return;
