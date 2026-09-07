@@ -64,6 +64,26 @@ describe("handleWebhookRequest routing", () => {
     expect(res.status).toBe(200);
   });
 
+  test("200s a push event for a claimed branch with no Gemini key, skipping drift (no network call)", async () => {
+    const secret = "webhook-test-secret-push-no-key";
+    const rs = await db.execute({
+      sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, webhook_secret, team_lead)
+            VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, public_id`,
+      args: ["chan-webhook-push-no-key", "guild-webhook-push-no-key", "Webhook Test", "o/r", "main", secret, "tester"],
+    });
+    const { id: projectId, public_id: publicId } = rs.rows[0] as unknown as { id: number; public_id: string };
+
+    await db.execute({
+      sql: `INSERT INTO tasks (branch_id, project_id, description, owner, status)
+            VALUES (?, ?, ?, ?, 'claimed')`,
+      args: ["feature/no-key", projectId, "Some task", "tester"],
+    });
+
+    const body = JSON.stringify({ ref: "refs/heads/feature/no-key" });
+    const res = await handleWebhookRequest(makeRequest(publicId, body, sign(body, secret), "push"));
+    expect(res.status).toBe(200);
+  });
+
   test("429s once the per-project rate limit is exhausted", async () => {
     const secret = "webhook-test-secret-429";
     const publicId = await insertProject("chan-webhook-429", "guild-webhook-429", secret);
