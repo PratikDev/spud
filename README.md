@@ -56,6 +56,7 @@ Catches "vibe coding" drift — claiming "auth" but also touching unrelated file
 - On the webhook's first `ping` event (sent automatically when GitHub adds the hook), the bot posts a one-time confirmation in the channel that the integration is live.
 - Pushes on a branch with no matching claimed task are silently ignored — nothing breaks, it just doesn't get scope-checked.
 - GitHub API calls are unauthenticated, so **the linked repo must be public**.
+- Every webhook request is rate-limited per project (token bucket, 20-request burst, refills at 1/3s) after signature verification — once exhausted, further requests get a `429` until it refills. Outbound GitHub compare-API and Gemini calls are also timeboxed (10s and 15s respectively) so a hung request can't stall the handler indefinitely.
 
 ### Auto-close on merge (GitHub webhook)
 
@@ -93,6 +94,8 @@ sequenceDiagram
     HTTP->>HTTP: verify HMAC-SHA256 (constant-time)
     alt signature invalid
         HTTP-->>GH: 401
+    else rate limit exhausted (per project)
+        HTTP-->>GH: 429
     else ping event
         HTTP-->>GH: 200
         HTTP->>Discord: "webhook connected successfully"
@@ -243,7 +246,7 @@ src/
 - **GitHub repos must be public** — the compare API is called unauthenticated, so private repos won't work, and you're subject to GitHub's 60 requests/hour unauthenticated rate limit.
 - **Overlap detection can reject legitimate claims** — it's an LLM judgment call with no manual override; if it wrongly flags a genuinely different task as a duplicate, your only recourse is retrying `/claim` with a more detailed description.
 - **Branch names must match exactly** — `/done`, `/free`, `/delete`, and drift-checking all key off the exact branch name the bot generated. Push to a differently-named branch and it's silently never scope-checked — by design, not a crash.
-- **Single instance only** — one Discord gateway connection per process, and no request/session state is shareable across replicas; this isn't built to run as multiple instances behind a load balancer.
+- **Single instance only** — one Discord gateway connection per process, and no request/session state is shareable across replicas; this isn't built to run as multiple instances behind a load balancer. Webhook rate limiting is also in-memory, so it resets on every restart and isn't shared across replicas.
 - **No schema migrations** — schema changes are hand-written `CREATE TABLE`/column edits with no migration tool. Given the "OK to lose data" stance that's intentional, but existing rows won't pick up new columns without a fresh database.
 - **No multi-timezone support** — `/project configure`'s natural-language timeline input (via `chrono-node`) is always parsed as Bangladesh Standard Time (UTC+6), regardless of who's typing or where the bot runs. Fine for a single BD-based team, not for a distributed one.
 - **Team lead has no reassignment path** — `/project configure`, `/project end`, and `/project status` are gated to the team lead (whoever ran `/project start`) with no admin override. If that person leaves the server, those subcommands become permanently unusable for that project — there's no command to reassign team lead and no migration tool to patch the `team_lead` column by hand.
