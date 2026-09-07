@@ -210,36 +210,6 @@ make rm      # docker rm -f spud
 
 Note: `.env` values must be unquoted for `--env-file` to parse them correctly (Bun's own loader strips quotes, Docker's doesn't).
 
-## Project structure
-
-```
-index.ts                     # entrypoint: init db, start webhook server, log in discord client
-src/
-  db.ts                       # schema + shared project queries
-  tasks.ts                    # task queries/mutations + branch-name collision safety
-  env.ts                      # env var loading/validation
-  types.ts                    # Project, Task types
-  discord/
-    client.ts                  # Client instance + interaction dispatch/error handling
-    board.ts                    # pinned board embed render/update/unpin
-    authorization.ts             # owner-or-admin authorization gate
-    autocomplete.ts               # shared autocomplete helper for task commands
-    register-commands.ts          # one-off script to push slash commands to Discord
-    commands/
-      constants.ts                 # shared reply strings
-      project/                     # /project start|configure|end|status|list
-      tasks/                       # /claim, /tasks, /done, /free, /delete
-  llm/
-    client.ts                   # shared Gemini model instance
-    claim-analysis.ts            # overlap check + branch naming (one call)
-    drift.ts                      # scope-drift judgment
-    prompts/                      # system prompts, kept separate from call logic
-  github/
-    verify.ts                   # HMAC-SHA256 webhook signature verification
-    compare.ts                   # default branch lookup + compare API
-    webhook.ts                   # Bun.serve routes (push/ping handling)
-```
-
 ## Known limitations
 
 - **No data persistence without Turso configured** — without `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` set, the app falls back to a local SQLite file inside the container's own writable layer, wiped on every restart or redeploy. Set those two env vars to persist real data in a hosted Turso database instead (see "Running with Docker").
