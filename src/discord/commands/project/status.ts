@@ -7,7 +7,9 @@ import { NO_ACTIVE_PROJECT, NOT_TEAM_LEAD } from "@/discord/commands/constants";
 import type { TaskStatus } from "@/types";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
-  return sub.setName("status").setDescription("Show the active project's title, repo, and task counts for this channel");
+  return sub
+    .setName("status")
+    .setDescription("Show the active project's title, repo, and task counts for this channel");
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {

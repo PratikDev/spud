@@ -6,7 +6,9 @@ const GITHUB_API = "https://api.github.com";
 const REQUEST_TIMEOUT_MS = 10_000;
 
 export async function getDefaultBranch(githubRepo: string): Promise<string> {
-  const response = await fetch(`${GITHUB_API}/repos/${githubRepo}`, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+  const response = await fetch(`${GITHUB_API}/repos/${githubRepo}`, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
   if (!response.ok) {
     log.error("Failed to fetch repo", {
       githubRepo,

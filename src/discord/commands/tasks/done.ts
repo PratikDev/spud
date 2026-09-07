@@ -5,7 +5,7 @@ import { canManageTask } from "@/discord/authorization";
 import { respondWithTaskAutocomplete } from "@/discord/autocomplete";
 import { updateBoard } from "@/discord/board";
 import type { Command } from "@/discord/commands";
-import { NOT_TASK_OWNER, NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
+import { NO_ACTIVE_PROJECT, NOT_TASK_OWNER } from "@/discord/commands/constants";
 import { findTaskByBranch, markTaskDone } from "@/tasks";
 
 export const done: Command = {
@@ -13,11 +13,7 @@ export const done: Command = {
     .setName("done")
     .setDescription("Mark a claimed task as done")
     .addStringOption((opt) =>
-      opt
-        .setName("branch")
-        .setDescription("Branch of the task to mark done")
-        .setRequired(true)
-        .setAutocomplete(true),
+      opt.setName("branch").setDescription("Branch of the task to mark done").setRequired(true).setAutocomplete(true),
     ),
 
   async execute(interaction) {
@@ -30,7 +26,7 @@ export const done: Command = {
     const branchId = interaction.options.getString("branch", true).trim();
     const task = await findTaskByBranch(project.id, branchId);
 
-    if (!task || task.status !== "claimed") {
+    if (task?.status !== "claimed") {
       await interaction.reply({
         content: `No claimed task found for branch \`${branchId}\`.`,
         flags: MessageFlags.Ephemeral,

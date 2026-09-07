@@ -6,7 +6,13 @@ import { updateBoard } from "@/discord/board";
 import type { Command } from "@/discord/commands";
 import { NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
 import { analyzeClaim } from "@/llm/claim-analysis";
-import { claimExistingTask, createAndClaimTask, ensureUniqueBranchId, findTaskByDescription, getTasksForProject } from "@/tasks";
+import {
+  claimExistingTask,
+  createAndClaimTask,
+  ensureUniqueBranchId,
+  findTaskByDescription,
+  getTasksForProject,
+} from "@/tasks";
 import type { Task } from "@/types";
 
 export const claim: Command = {

@@ -1,5 +1,5 @@
-import { PermissionFlagsBits } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
+import { PermissionFlagsBits } from "discord.js";
 
 import { createLogger } from "@/logger";
 import type { Project } from "@/types";

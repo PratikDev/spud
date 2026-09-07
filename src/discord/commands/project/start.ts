@@ -1,7 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { LibsqlError } from "@libsql/client";
 import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import { MessageFlags } from "discord.js";
-import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
 import { db, getActiveProject } from "@/db";
@@ -67,7 +67,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await db.execute({
       sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, webhook_secret, team_lead)
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [interaction.channelId, interaction.guildId, title, githubRepo, defaultBranch, webhookSecret, interaction.user.id],
+      args: [
+        interaction.channelId,
+        interaction.guildId,
+        title,
+        githubRepo,
+        defaultBranch,
+        webhookSecret,
+        interaction.user.id,
+      ],
     });
   } catch (error) {
     // The partial unique index on projects(channel_id) WHERE status = 'active' is the
@@ -83,7 +91,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     throw error;
   }
 
-  await interaction.reply(`Started project **${title}**, linked to \`${githubRepo}\`. This channel's board is now active.`);
+  await interaction.reply(
+    `Started project **${title}**, linked to \`${githubRepo}\`. This channel's board is now active.`,
+  );
 
   const project = await getActiveProject(interaction.channelId);
   if (project) {
@@ -102,7 +112,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       `- Payload URL: \`${payloadUrl}\`${payloadUrlNote}`,
       "- Content type: `application/json`",
       `- Secret: \`${webhookSecret}\``,
-      "- Events: `push` and `pull_request` (select individual events, not \"Send me everything\")",
+      '- Events: `push` and `pull_request` (select individual events, not "Send me everything")',
       "",
       "Add this under the repo's **Settings → Webhooks → Add webhook**.",
       "",

@@ -28,7 +28,7 @@ async function notifyWebhookConnected(project: Project) {
   log.info("Confirmed webhook connection", { projectId: project.id });
 }
 
-async function processPushEvent(project: Project, request: Request, rawBody: string) {
+async function processPushEvent(project: Project, rawBody: string) {
   if (project.status !== "active") {
     log.debug("Ignoring push — project not active", { projectId: project.id });
     return;
@@ -47,7 +47,7 @@ async function processPushEvent(project: Project, request: Request, rawBody: str
   }
 
   const task = await findTaskByBranch(project.id, branchId);
-  if (!task || task.status !== "claimed") {
+  if (task?.status !== "claimed") {
     log.debug("Ignoring push — no claimed task for branch", { projectId: project.id, branchId });
     return;
   }
@@ -104,7 +104,7 @@ async function processPullRequestEvent(project: Project, rawBody: string) {
 
   const branchId = payload.pull_request.head.ref;
   const task = await findTaskByBranch(project.id, branchId);
-  if (!task || task.status !== "claimed") {
+  if (task?.status !== "claimed") {
     log.debug("Ignoring merge — no claimed task for branch", { projectId: project.id, branchId });
     return;
   }
@@ -121,7 +121,12 @@ async function processPullRequestEvent(project: Project, rawBody: string) {
   await channel.send(
     `✅ <@${task.owner}>'s task **${task.description}** was merged via \`${branchId}\` (PR #${payload.pull_request.number}) and marked done.`,
   );
-  log.info("Closed task on merge", { projectId: project.id, taskId: task.id, branchId, pr: payload.pull_request.number });
+  log.info("Closed task on merge", {
+    projectId: project.id,
+    taskId: task.id,
+    branchId,
+    pr: payload.pull_request.number,
+  });
 }
 
 export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github/:projectId">): Promise<Response> {
@@ -153,7 +158,7 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
     if (githubEvent === "ping") {
       await notifyWebhookConnected(project);
     } else if (githubEvent === "push") {
-      await processPushEvent(project, req, rawBody);
+      await processPushEvent(project, rawBody);
     } else if (githubEvent === "pull_request") {
       await processPullRequestEvent(project, rawBody);
     } else {
@@ -183,7 +188,7 @@ export function startWebhookServer() {
     routes: {
       "/health": new Response("OK"),
       "/webhooks/github/:projectId": {
-        POST: handleWebhookRequest
+        POST: handleWebhookRequest,
       },
     },
   });

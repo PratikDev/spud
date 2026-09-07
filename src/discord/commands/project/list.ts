@@ -32,7 +32,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const lines = projects.map((project) => `<#${project.channel_id}> — **${project.title}** (\`${project.github_repo}\`)`);
+  const lines = projects.map(
+    (project) => `<#${project.channel_id}> — **${project.title}** (\`${project.github_repo}\`)`,
+  );
 
   // Ephemeral: this is a cross-channel admin view, so it shouldn't broadcast other
   // teams' project names/repos into whichever channel it's run from.

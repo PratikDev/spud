@@ -29,7 +29,9 @@ export async function respondWithTaskAutocomplete(
   const tasks = status ? await listTasksByStatus(project.id, status) : await getTasksForProject(project.id);
 
   const matches = tasks
-    .filter((task) => (matchField === "description" ? task.description : task.branch_id).toLowerCase().includes(focused))
+    .filter((task) =>
+      (matchField === "description" ? task.description : task.branch_id).toLowerCase().includes(focused),
+    )
     .slice(0, 25)
     .map((task) =>
       matchField === "description"
@@ -37,6 +39,11 @@ export async function respondWithTaskAutocomplete(
         : { name: `${task.branch_id} - ${task.description}`.slice(0, 100), value: task.branch_id },
     );
 
-  log.debug("Responded with autocomplete matches", { projectId: project.id, status, matchField, count: matches.length });
+  log.debug("Responded with autocomplete matches", {
+    projectId: project.id,
+    status,
+    matchField,
+    count: matches.length,
+  });
   await interaction.respond(matches);
 }

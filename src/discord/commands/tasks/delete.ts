@@ -5,7 +5,7 @@ import { canManageTask } from "@/discord/authorization";
 import { respondWithTaskAutocomplete } from "@/discord/autocomplete";
 import { updateBoard } from "@/discord/board";
 import type { Command } from "@/discord/commands";
-import { NOT_TASK_OWNER, NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
+import { NO_ACTIVE_PROJECT, NOT_TASK_OWNER } from "@/discord/commands/constants";
 import { deleteTask, findTaskByBranch } from "@/tasks";
 
 export const deleteTaskCommand: Command = {
