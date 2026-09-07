@@ -7,9 +7,11 @@
     "dev": "bun run --watch index.ts",
     "start": "bun run index.ts",
     "register-commands": "bun run src/discord/register-commands.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "lint": "biome check ."
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
     "@types/bun": "latest"
   },
   "peerDependencies": {
