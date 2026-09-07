@@ -3,6 +3,7 @@ import { updateBoard } from "@/discord/board";
 import { client } from "@/discord/client";
 import { env } from "@/env";
 import { compareBranches } from "@/github/compare";
+import { consumeToken } from "@/github/rate-limit";
 import { verifySignature } from "@/github/verify";
 import { analyzeDrift } from "@/llm/drift";
 import { createLogger } from "@/logger";
@@ -134,6 +135,10 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
   if (!verifySignature(rawBody, project.webhook_secret, req.headers.get("x-hub-signature-256"))) {
     log.warn("Rejected webhook request with bad signature", { projectId: project.id });
     return new Response("Invalid signature", { status: 401 });
+  }
+
+  if (!consumeToken(project.id)) {
+    return new Response("Too many requests", { status: 429 });
   }
 
   // Only reachable once signature verification passes, so from here on we always
