@@ -2,7 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 
 import type { ChangedFile } from "@/github/compare";
-import { model } from "@/llm/client";
+import { getModel } from "@/llm/client";
 import { DRIFT_SYSTEM_PROMPT } from "@/llm/prompts/drift";
 import { createLogger } from "@/logger";
 
@@ -18,12 +18,16 @@ export interface DriftAnalysis {
   reason: string | null;
 }
 
-export async function analyzeDrift(taskDescription: string, changedFiles: ChangedFile[]): Promise<DriftAnalysis> {
+export async function analyzeDrift(
+  apiKey: string,
+  taskDescription: string,
+  changedFiles: ChangedFile[],
+): Promise<DriftAnalysis> {
   const fileList = changedFiles.map((file) => `- ${file.filename} (${file.status})`).join("\n");
 
   try {
     const { output } = await generateText({
-      model,
+      model: getModel(apiKey),
       output: Output.object({ schema: outputSchema }),
       system: DRIFT_SYSTEM_PROMPT,
       prompt: `Task description: "${taskDescription}"\n\nChanged files:\n${fileList}`,

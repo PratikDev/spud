@@ -1,7 +1,7 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
 
-import { model } from "@/llm/client";
+import { getModel } from "@/llm/client";
 import { CLAIM_ANALYSIS_SYSTEM_PROMPT } from "@/llm/prompts/claim-analysis";
 import { createLogger } from "@/logger";
 
@@ -20,7 +20,11 @@ export interface ClaimAnalysis {
   branchName: string;
 }
 
-export async function analyzeClaim(description: string, claimedDescriptions: string[]): Promise<ClaimAnalysis> {
+export async function analyzeClaim(
+  apiKey: string,
+  description: string,
+  claimedDescriptions: string[],
+): Promise<ClaimAnalysis> {
   const claimedList =
     claimedDescriptions.length > 0
       ? `Already-claimed task descriptions on this project:\n${claimedDescriptions.map((d) => `- ${d}`).join("\n")}`
@@ -28,7 +32,7 @@ export async function analyzeClaim(description: string, claimedDescriptions: str
 
   try {
     const { output } = await generateText({
-      model,
+      model: getModel(apiKey),
       output: Output.object({
         schema: outputSchema,
       }),

@@ -1,9 +1,10 @@
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 import { env } from "@/env";
-import { createLogger } from "@/logger";
 
-const log = createLogger("llm/client");
-
-export const model = google(env.GEMINI_MODEL_NAME);
-log.info("Initialized Gemini model", { model: env.GEMINI_MODEL_NAME });
+// Each project supplies its own Gemini API key (see project/set-gemini-key.ts) —
+// there's no shared key for Spud to manage, so this builds a model per call
+// rather than once at module load.
+export function getModel(apiKey: string) {
+  return createGoogleGenerativeAI({ apiKey })(env.GEMINI_MODEL_NAME);
+}
