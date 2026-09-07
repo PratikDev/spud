@@ -31,7 +31,8 @@ await db.execute(`
     team_lead TEXT NOT NULL,
     rulebook_message_id TEXT,
     ended_at INTEGER,
-    board_message_id TEXT
+    board_message_id TEXT,
+    gemini_api_key TEXT
   );
 `);
 
