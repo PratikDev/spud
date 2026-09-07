@@ -34,6 +34,7 @@ export async function analyzeClaim(description: string, claimedDescriptions: str
       }),
       system: CLAIM_ANALYSIS_SYSTEM_PROMPT,
       prompt: `New task description: "${description}"\n\n${claimedList}`,
+      timeout: { totalMs: 15_000 },
     });
 
     log.info("Analyzed claim", {

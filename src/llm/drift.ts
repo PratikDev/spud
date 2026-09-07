@@ -27,6 +27,7 @@ export async function analyzeDrift(taskDescription: string, changedFiles: Change
       output: Output.object({ schema: outputSchema }),
       system: DRIFT_SYSTEM_PROMPT,
       prompt: `Task description: "${taskDescription}"\n\nChanged files:\n${fileList}`,
+      timeout: { totalMs: 15_000 },
     });
 
     log.info("Analyzed drift", { taskDescription, isDrifted: output.isDrifted, reason: output.reason });
