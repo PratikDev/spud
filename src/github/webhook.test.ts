@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createHmac } from "node:crypto";
 
+import { encrypt } from "@/crypto";
 import { db } from "@/db";
 import { handleWebhookRequest } from "@/github/webhook";
 
@@ -48,6 +49,15 @@ describe("handleWebhookRequest routing", () => {
   test("200s for a correctly signed ping event", async () => {
     const secret = "webhook-test-secret-200";
     const publicId = await insertProject("chan-webhook-200", "guild-webhook-200", secret);
+    const body = JSON.stringify({ zen: "test" });
+
+    const res = await handleWebhookRequest(makeRequest(publicId, body, sign(body, secret)));
+    expect(res.status).toBe(200);
+  });
+
+  test("200s for a correctly signed ping event when the stored secret is encrypted", async () => {
+    const secret = "webhook-test-secret-encrypted";
+    const publicId = await insertProject("chan-webhook-encrypted", "guild-webhook-encrypted", encrypt(secret));
     const body = JSON.stringify({ zen: "test" });
 
     const res = await handleWebhookRequest(makeRequest(publicId, body, sign(body, secret)));
