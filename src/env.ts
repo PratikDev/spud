@@ -20,6 +20,10 @@ export const env = {
   DISCORD_CLIENT_ID: requireEnv("DISCORD_CLIENT_ID"),
   GOOGLE_GENERATIVE_AI_API_KEY: requireEnv("GOOGLE_GENERATIVE_AI_API_KEY"),
   GEMINI_MODEL_NAME: requireEnv("GEMINI_MODEL_NAME"),
+  // Base64-encoded 32-byte key for AES-256-GCM, used to encrypt sensitive
+  // columns (webhook_secret, and later a user-provided Gemini API key) at
+  // rest — generate with `openssl rand -base64 32`.
+  ENCRYPTION_KEY: requireEnv("ENCRYPTION_KEY"),
   // GitHub webhook (Feature 4) — all optional: PORT has a sane default,
   // and PUBLIC_BASE_URL is only used for display.
   PORT: Number(optionalEnv("PORT") ?? 3000),

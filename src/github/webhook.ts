@@ -1,3 +1,4 @@
+import { decrypt } from "@/crypto";
 import { getProjectByPublicId } from "@/db";
 import { updateBoard } from "@/discord/board";
 import { client } from "@/discord/client";
@@ -137,7 +138,7 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
   }
 
   const rawBody = await req.text();
-  if (!verifySignature(rawBody, project.webhook_secret, req.headers.get("x-hub-signature-256"))) {
+  if (!verifySignature(rawBody, decrypt(project.webhook_secret), req.headers.get("x-hub-signature-256"))) {
     log.warn("Rejected webhook request with bad signature", { projectId: project.id });
     return new Response("Invalid signature", { status: 401 });
   }

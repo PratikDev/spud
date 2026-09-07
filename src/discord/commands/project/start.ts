@@ -4,6 +4,7 @@ import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from 
 import { MessageFlags } from "discord.js";
 import { z } from "zod";
 
+import { encrypt } from "@/crypto";
 import { db, getActiveProject } from "@/db";
 import { updateBoard } from "@/discord/board";
 import { env } from "@/env";
@@ -73,7 +74,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         title,
         githubRepo,
         defaultBranch,
-        webhookSecret,
+        encrypt(webhookSecret),
         interaction.user.id,
       ],
     });
