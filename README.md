@@ -15,6 +15,7 @@ A project is scoped to a **channel**, not the whole server, so one Discord serve
 | `/project end` | Team lead only | Ends the active project, archives (doesn't delete) its board/task data, unpins the board |
 | `/project status` | Team lead only | Shows the active project's title, repo, task counts, timeline, and rulebook link |
 | `/project list` | Server admin | Lists all active projects across the server (bird's-eye view, ephemeral) |
+| `/project set-gemini-key` | Team lead only | Opens a modal to set or remove this project's own Gemini API key, enabling/disabling AI features |
 
 `/project start` is open to anyone — whoever runs it in a channel becomes that project's team lead, no `Administrator` permission required. `/project configure`, `/project end`, and `/project status` are then restricted to that specific Discord member — with **no admin override**. Only `/project list` requires Discord's `Administrator` permission, since it's a cross-channel, server-wide view. This mixed anyone/team-lead/admin model can't be expressed through Discord's per-command default-permission system (which applies to a whole command, not per-subcommand), so it's enforced in application code instead (see [authorization.ts](src/discord/authorization.ts)). A channel can only have one *active* project at a time, enforced at the database level (a partial unique index), not just in application code.
 
@@ -36,6 +37,12 @@ A pinned, auto-updating embed in the project's channel with three sections: 🟢
 
 **Authorization:** `/done`, `/free`, and `/delete` only work for the task's current owner or a server admin — anyone else gets turned away. The one exception is deleting an *unclaimed* task, which has no owner to match against, so that specific case is admin-only.
 
+### AI features (Gemini)
+
+Overlap detection, branch naming, and scope-drift nudges (both described below) all run on Gemini — but Spud doesn't hold its own Gemini key. Each project supplies its own via `/project set-gemini-key`, collected through a Discord **modal** rather than a plain command option (a typed option's value shows up in the channel even with an ephemeral reply; a modal submission never does), and stored encrypted (see "Encryption at rest" below). Submitting an empty value clears it.
+
+Without a key set, AI features are simply unavailable for that project rather than erroring — see each feature's fallback below.
+
 ### Overlap Detection + Branch Naming
 
 When `/claim` is given free text that doesn't match an existing unclaimed task, it's treated as a brand-new task and a single Gemini call ([`llm/claim-analysis.ts`](src/llm/claim-analysis.ts)) does two things at once:
@@ -45,13 +52,15 @@ When `/claim` is given free text that doesn't match an existing unclaimed task, 
 
 Claiming an *existing* unclaimed task skips all of this — no LLM call, no new branch, since it was already checked when the task was first created.
 
+**No Gemini key configured:** no overlap check at all, and a plain `task/kebab-slug` branch name instead ([`utils/slugify.ts`](src/utils/slugify.ts), no type guessing) — with a one-time note in `/claim`'s reply pointing at `/project set-gemini-key`.
+
 ### Scope-Drift Detection (GitHub webhook)
 
 Catches "vibe coding" drift — claiming "auth" but also touching unrelated files — without anyone self-reporting.
 
 - On `/project start`, the repo's default branch (not a hardcoded `main` — plenty of repos still use `master`) is fetched once and cached on the project row, and a webhook secret is generated and shown to the team lead (ephemeral, once) along with the payload URL, content type, and which events to select in GitHub's **Settings → Webhooks → Add webhook**.
 - On every `push` whose branch isn't the cached default branch, the bot diffs it against that default branch via GitHub's compare API — pushes to the default branch itself are ignored before any database lookup, since they can never be a task's working branch.
-- If the branch matches a currently-*claimed* task, the changed files + task description go to Gemini ([`llm/drift.ts`](src/llm/drift.ts)), which judges whether the diff still looks consistent with the task — biased toward not flagging, since a false alarm costs more trust than a missed one.
+- If the branch matches a currently-*claimed* task **and the project has a Gemini key configured**, the changed files + task description go to Gemini ([`llm/drift.ts`](src/llm/drift.ts)), which judges whether the diff still looks consistent with the task — biased toward not flagging, since a false alarm costs more trust than a missed one. No key configured means the drift check is silently skipped — before the GitHub compare-API call even happens, not just before the Gemini call.
 - If flagged, the bot posts a nudge in the project's channel naming the unexpected files.
 - On the webhook's first `ping` event (sent automatically when GitHub adds the hook), the bot posts a one-time confirmation in the channel that the integration is live.
 - Pushes on a branch with no matching claimed task are silently ignored — nothing breaks, it just doesn't get scope-checked.
@@ -63,6 +72,10 @@ Catches "vibe coding" drift — claiming "auth" but also touching unrelated file
 - On a `pull_request` event with `action: closed` and `merged: true`, the bot reads the merged branch straight off the payload (`pull_request.head.ref`) — no extra API call needed.
 - If that branch matches a currently-*claimed* task, the task is marked done automatically and the board updates, with a confirmation posted in the channel naming the PR.
 - **Only detects merges done through GitHub's own merge/squash/rebase button** (i.e. via a pull request). A team that merges locally and pushes straight to the default branch won't trigger this — that push is a default-branch push, which is deliberately ignored (see above).
+
+### Encryption at rest
+
+The webhook secret and each project's Gemini API key are stored encrypted (AES-256-GCM, [`crypto.ts`](src/crypto.ts)), keyed by a server-side `ENCRYPTION_KEY` env var — not by the database's own storage layer, so this holds regardless of what the underlying host provides. Both are decrypted only at the point of use (HMAC comparison, the Gemini call) and are never written to logs.
 
 ## Architecture
 
@@ -107,12 +120,16 @@ sequenceDiagram
             alt no matching claimed task
                 HTTP-->>GH: 200 (no-op)
             else task found
-                HTTP->>API: compare(cached default branch, branch)
-                HTTP->>LLM: task description + changed files -> isDrifted?
-                alt drifted
-                    HTTP->>Discord: nudge naming the unexpected files
+                alt no Gemini key configured for project
+                    HTTP-->>GH: 200 (drift check skipped, no compare call)
+                else
+                    HTTP->>API: compare(cached default branch, branch)
+                    HTTP->>LLM: task description + changed files -> isDrifted?
+                    alt drifted
+                        HTTP->>Discord: nudge naming the unexpected files
+                    end
+                    HTTP-->>GH: 200
                 end
-                HTTP-->>GH: 200
             end
         end
     else pull_request event (closed + merged)
@@ -135,7 +152,7 @@ sequenceDiagram
 | Webhook HTTP server | `Bun.serve` (built-in — no Express/Hono) |
 | LLM | `ai` (Vercel AI SDK) + `@ai-sdk/google`, Gemini |
 | GitHub API | raw `fetch` (no `octokit`) |
-| HMAC verification | Node/Bun built-in `crypto` |
+| HMAC verification + encryption at rest | Node/Bun built-in `crypto` |
 | Validation | `zod` |
 | Date parsing | `chrono-node` (natural-language timeline input for `/project configure`) |
 | Logging | `winston` + `winston-loki`, optionally shipping to Grafana Cloud Loki |
@@ -147,7 +164,7 @@ Net dependencies: `discord.js`, `ai`, `@ai-sdk/google`, `@libsql/client`, `zod`,
 **Prerequisites:**
 - [Bun](https://bun.com) installed
 - A Discord application + bot ([Developer Portal](https://discord.com/developers/applications)) — see below if you haven't made one
-- A free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
+- Optional: a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) — only needed per-project, via `/project set-gemini-key`, to enable AI features (see "AI features (Gemini)" above)
 
 **1. Install dependencies**
 
@@ -165,8 +182,8 @@ cp .env.example .env
 |---|---|---|
 | `DISCORD_TOKEN` | yes | Bot token, from the Developer Portal's **Bot** page |
 | `DISCORD_CLIENT_ID` | yes | Application ID, from **General Information** |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | yes | From Google AI Studio |
-| `GEMINI_MODEL_NAME` | yes | e.g. `gemini-3.1-flash-lite` |
+| `GEMINI_MODEL_NAME` | yes | e.g. `gemini-3.1-flash-lite` — the model Spud calls; each project's own key (see "AI features (Gemini)" above) authenticates the call |
+| `ENCRYPTION_KEY` | yes | Base64-encoded 32-byte key for AES-256-GCM, used to encrypt `webhook_secret` and `gemini_api_key` at rest. Generate with `openssl rand -base64 32` |
 | `PORT` | no | Webhook server port, defaults to `3000` |
 | `PUBLIC_BASE_URL` | no | Shown in `/project start`'s webhook setup message; without it you just get the raw path |
 | `TURSO_DATABASE_URL` | no | Hosted [Turso](https://turso.tech) database URL. Without it, falls back to a local SQLite file |
@@ -191,7 +208,7 @@ bun run register-commands   # push commands to Discord (re-run after changing an
 bun run dev                 # or `bun run start` without file-watching
 ```
 
-Try `/project start` in a channel (anyone can run it — no admin permission needed), then `/claim`.
+Try `/project start` in a channel (anyone can run it — no admin permission needed), then `/claim`. Run `/project set-gemini-key` beforehand if you want overlap detection and drift nudges — it's optional, everything else works without it.
 
 **Testing the GitHub webhook locally:** point `ngrok` (or similar) at your `PORT`, set `PUBLIC_BASE_URL` to the ngrok URL, and use the payload URL `/project start` gives you when adding the webhook on a public repo.
 
@@ -221,3 +238,4 @@ Note: `.env` values must be unquoted for `--env-file` to parse them correctly (B
 - **No multi-timezone support** — `/project configure`'s natural-language timeline input (via `chrono-node`) is always parsed as Bangladesh Standard Time (UTC+6), regardless of who's typing or where the bot runs. Fine for a single BD-based team, not for a distributed one.
 - **Team lead has no reassignment path** — `/project configure`, `/project end`, and `/project status` are gated to the team lead (whoever ran `/project start`) with no admin override. If that person leaves the server, those subcommands become permanently unusable for that project — there's no command to reassign team lead and no migration tool to patch the `team_lead` column by hand.
 - **Default branch is cached, not re-checked** — the repo's default branch is fetched once at `/project start` and reused for every push/drift comparison after that. If the repo's default branch is renamed later (e.g. `master` → `main`), the project won't notice — the only fix is ending and restarting the project.
+- **AI features are silently opt-in** — a project with no Gemini key set via `/project set-gemini-key` gets no overlap detection (just a plain slug branch name) and no drift nudges, with only a one-time note in `/claim`'s reply — there's no periodic reminder that AI features are off.
