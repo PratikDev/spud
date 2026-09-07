@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "bun run --watch index.ts",
     "start": "bun run index.ts",
-    "register-commands": "bun run src/discord/register-commands.ts"
+    "register-commands": "bun run src/discord/register-commands.ts",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest"
