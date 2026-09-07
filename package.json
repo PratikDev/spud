@@ -8,7 +8,8 @@
     "start": "bun run index.ts",
     "register-commands": "bun run src/discord/register-commands.ts",
     "test": "bun test",
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
