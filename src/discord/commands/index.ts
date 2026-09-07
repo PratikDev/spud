@@ -6,6 +6,7 @@ import type {
   SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 
+import { help } from "./help";
 import { project } from "./project";
 import { taskCommands } from "./tasks";
 
@@ -15,4 +16,4 @@ export interface Command {
   autocomplete?(interaction: AutocompleteInteraction): Promise<void>;
 }
 
-export const commands: Command[] = [project, ...taskCommands];
+export const commands: Command[] = [project, ...taskCommands, help];
