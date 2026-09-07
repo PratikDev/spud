@@ -18,11 +18,12 @@ function optionalEnv(name: string): string | undefined {
 export const env = {
   DISCORD_TOKEN: requireEnv("DISCORD_TOKEN"),
   DISCORD_CLIENT_ID: requireEnv("DISCORD_CLIENT_ID"),
-  GOOGLE_GENERATIVE_AI_API_KEY: requireEnv("GOOGLE_GENERATIVE_AI_API_KEY"),
+  // Not Spud's own key — each project supplies its own via /project
+  // set-gemini-key, so only the model choice is global.
   GEMINI_MODEL_NAME: requireEnv("GEMINI_MODEL_NAME"),
   // Base64-encoded 32-byte key for AES-256-GCM, used to encrypt sensitive
-  // columns (webhook_secret, and later a user-provided Gemini API key) at
-  // rest — generate with `openssl rand -base64 32`.
+  // columns (webhook_secret, gemini_api_key) at rest — generate with
+  // `openssl rand -base64 32`.
   ENCRYPTION_KEY: requireEnv("ENCRYPTION_KEY"),
   // GitHub webhook (Feature 4) — all optional: PORT has a sane default,
   // and PUBLIC_BASE_URL is only used for display.
