@@ -188,6 +188,7 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
   return new Response("OK", { status: 200 });
 }
 
+const landingPageFile = Bun.file(new URL("../../public/index.html", import.meta.url));
 const termsFile = Bun.file(new URL("../../legal/terms.html", import.meta.url));
 const privacyFile = Bun.file(new URL("../../legal/privacy.html", import.meta.url));
 
@@ -195,6 +196,7 @@ export function startWebhookServer() {
   const server = Bun.serve({
     port: env.PORT,
     routes: {
+      "/": new Response(landingPageFile),
       "/health": new Response("OK"),
       "/terms": new Response(termsFile),
       "/privacy": new Response(privacyFile),
