@@ -4,6 +4,7 @@ import { endActiveProjectsForGuild } from "@/db";
 import { env } from "@/env";
 import { createLogger } from "@/logger";
 import { commands } from "./commands";
+import { handleModalSubmit, MODAL_CUSTOM_ID_PREFIX } from "./commands/project/set-gemini-key";
 
 const log = createLogger("discord/client");
 
@@ -27,6 +28,24 @@ client.on(Events.GuildDelete, async (guild) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
+  // Only one modal exists right now, so this is a direct dispatch rather than a
+  // general modal registry — worth generalizing if a second one shows up.
+  if (interaction.isModalSubmit()) {
+    if (!interaction.customId.startsWith(MODAL_CUSTOM_ID_PREFIX)) return;
+    try {
+      await handleModalSubmit(interaction);
+    } catch (error) {
+      log.error("Error handling modal submit", { customId: interaction.customId, error: String(error) });
+      const reply = { content: "Something went wrong saving that.", flags: MessageFlags.Ephemeral } as const;
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(reply).catch(() => {});
+      } else {
+        await interaction.reply(reply).catch(() => {});
+      }
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand() && !interaction.isAutocomplete()) return;
 
   const command = commands.find((c) => c.data.name === interaction.commandName);

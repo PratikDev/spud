@@ -33,9 +33,11 @@ export function isServerAdmin(interaction: ChatInputCommandInteraction): boolean
   return allowed;
 }
 
-// Authorization gate for /project configure|end|status: only the project's team
-// lead (whoever ran /project start) may act — deliberately no admin override.
-export function isTeamLead(interaction: ChatInputCommandInteraction, project: Project): boolean {
+// Authorization gate for /project configure|end|status (and the gemini-key
+// modal submission, which isn't a ChatInputCommandInteraction): only the
+// project's team lead (whoever ran /project start) may act — deliberately no
+// admin override. Structurally typed so any interaction with a `user` works.
+export function isTeamLead(interaction: { user: { id: string } }, project: Project): boolean {
   const allowed = interaction.user.id === project.team_lead;
   log.debug(allowed ? "Team lead check passed" : "Team lead check failed", {
     userId: interaction.user.id,
