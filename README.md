@@ -128,14 +128,16 @@ sequenceDiagram
 |---|---|
 | Runtime | [Bun](https://bun.com) |
 | Discord | `discord.js` v14 |
-| Database | `bun:sqlite` (built into Bun — no separate DB server) |
+| Database | `@libsql/client` — [Turso](https://turso.tech) when `TURSO_DATABASE_URL` is set, a local SQLite file otherwise |
 | Webhook HTTP server | `Bun.serve` (built-in — no Express/Hono) |
 | LLM | `ai` (Vercel AI SDK) + `@ai-sdk/google`, Gemini |
 | GitHub API | raw `fetch` (no `octokit`) |
 | HMAC verification | Node/Bun built-in `crypto` |
 | Validation | `zod` |
+| Date parsing | `chrono-node` (natural-language timeline input for `/project configure`) |
+| Logging | `winston` + `winston-loki`, optionally shipping to Grafana Cloud Loki |
 
-The only real dependencies are `discord.js`, `ai`, `@ai-sdk/google`, and `zod` — everything else rides on what Bun ships with.
+Net dependencies: `discord.js`, `ai`, `@ai-sdk/google`, `@libsql/client`, `zod`, `chrono-node`, `winston`, `winston-loki` — everything else rides on what Bun ships with.
 
 ## Local setup
 
@@ -164,6 +166,13 @@ cp .env.example .env
 | `GEMINI_MODEL_NAME` | yes | e.g. `gemini-3.1-flash-lite` |
 | `PORT` | no | Webhook server port, defaults to `3000` |
 | `PUBLIC_BASE_URL` | no | Shown in `/project start`'s webhook setup message; without it you just get the raw path |
+| `TURSO_DATABASE_URL` | no | Hosted [Turso](https://turso.tech) database URL. Without it, falls back to a local SQLite file |
+| `TURSO_AUTH_TOKEN` | no | Turso auth token — must be a **database** token (`turso db tokens create <db-name>`), not an account-level API token |
+| `DATABASE_PATH` | no | Local SQLite file path, only used when `TURSO_DATABASE_URL` is unset. Defaults to `spud.sqlite` |
+| `LOG_LEVEL` | no | Minimum level to emit (`debug`/`info`/`warn`/`error`). Defaults to `info` |
+| `LOKI_HOST` | no | Grafana Cloud Loki instance URL (bare, no path — same as the data source's "Connection URL"). Logs ship to Loki only if this and the next two are all set |
+| `USER_ID` | no | Grafana Cloud Loki numeric instance/user ID |
+| `GRAFANA_CLOUD_TOKEN` | no | Grafana Cloud API token with Loki write access |
 
 **3. Create and invite the bot** (skip if you already have one in your server)
 
@@ -179,13 +188,13 @@ bun run register-commands   # push commands to Discord (re-run after changing an
 bun run dev                 # or `bun run start` without file-watching
 ```
 
-Try `/project start` in a channel as an admin, then `/claim`.
+Try `/project start` in a channel (anyone can run it — no admin permission needed), then `/claim`.
 
 **Testing the GitHub webhook locally:** point `ngrok` (or similar) at your `PORT`, set `PUBLIC_BASE_URL` to the ngrok URL, and use the payload URL `/project start` gives you when adding the webhook on a public repo.
 
 ## Running with Docker
 
-The [Dockerfile](Dockerfile) compiles the app to a standalone binary (`bun build --compile`) in a builder stage, then copies just that binary into a minimal `alpine` runtime image — no Bun runtime, no `node_modules`, no source in the final image. The SQLite file lives in the container's own writable layer with no volume — restarting the container loses the board, which is fine for personal/single-user use and keeps hosting as cheap as possible.
+The [Dockerfile](Dockerfile) runs the app via `bun run index.ts` on top of a normal `bun install --production`, rather than compiling a standalone binary — `@libsql/client` loads a platform-specific native binding at runtime (e.g. `@libsql/linux-x64-musl`), resolved dynamically rather than via a static import, which `bun build --compile` can't bundle into a single executable. Without `TURSO_DATABASE_URL` set, the app falls back to a local SQLite file inside the container's own writable layer, lost on every restart; set `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` (see the env var table above) for real persistence via a hosted Turso database instead.
 
 ```bash
 make build   # docker build -t spud .
@@ -230,11 +239,11 @@ src/
 
 ## Known limitations
 
-- **No data persistence by default** — the Docker image stores SQLite in the container's own writable layer with no volume; restarting or redeploying wipes every project and task. Deliberate personal-use tradeoff (see "Running with Docker"), not a bug.
+- **No data persistence without Turso configured** — without `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` set, the app falls back to a local SQLite file inside the container's own writable layer, wiped on every restart or redeploy. Set those two env vars to persist real data in a hosted Turso database instead (see "Running with Docker").
 - **GitHub repos must be public** — the compare API is called unauthenticated, so private repos won't work, and you're subject to GitHub's 60 requests/hour unauthenticated rate limit.
 - **Overlap detection can reject legitimate claims** — it's an LLM judgment call with no manual override; if it wrongly flags a genuinely different task as a duplicate, your only recourse is retrying `/claim` with a more detailed description.
 - **Branch names must match exactly** — `/done`, `/free`, `/delete`, and drift-checking all key off the exact branch name the bot generated. Push to a differently-named branch and it's silently never scope-checked — by design, not a crash.
-- **Single instance only** — one SQLite file and one Discord gateway connection per process; this isn't built to run as multiple replicas behind a load balancer.
+- **Single instance only** — one Discord gateway connection per process, and no request/session state is shareable across replicas; this isn't built to run as multiple instances behind a load balancer.
 - **No schema migrations** — schema changes are hand-written `CREATE TABLE`/column edits with no migration tool. Given the "OK to lose data" stance that's intentional, but existing rows won't pick up new columns without a fresh database.
 - **No multi-timezone support** — `/project configure`'s natural-language timeline input (via `chrono-node`) is always parsed as Bangladesh Standard Time (UTC+6), regardless of who's typing or where the bot runs. Fine for a single BD-based team, not for a distributed one.
 - **Team lead has no reassignment path** — `/project configure`, `/project end`, and `/project status` are gated to the team lead (whoever ran `/project start`) with no admin override. If that person leaves the server, those subcommands become permanently unusable for that project — there's no command to reassign team lead and no migration tool to patch the `team_lead` column by hand.
