@@ -3,7 +3,7 @@ import { createHmac } from "node:crypto";
 
 import { encrypt } from "@/crypto";
 import { db } from "@/db";
-import { handleWebhookRequest } from "@/github/webhook";
+import { handleWebhookRequest, startWebhookServer } from "@/github/webhook";
 
 function sign(body: string, secret: string) {
   return `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
@@ -95,5 +95,26 @@ describe("handleWebhookRequest routing", () => {
       last = await handleWebhookRequest(makeRequest(publicId, body, signature));
     }
     expect(last?.status).toBe(429);
+  });
+});
+
+describe("static routes", () => {
+  test("serve the landing page, Terms of Service, and Privacy Policy", async () => {
+    const server = startWebhookServer();
+    try {
+      const landing = await fetch(`http://localhost:${server.port}/`);
+      expect(landing.status).toBe(200);
+      expect(await landing.text()).toContain("<title>Spud</title>");
+
+      const terms = await fetch(`http://localhost:${server.port}/terms`);
+      expect(terms.status).toBe(200);
+      expect(await terms.text()).toContain("Terms of Service");
+
+      const privacy = await fetch(`http://localhost:${server.port}/privacy`);
+      expect(privacy.status).toBe(200);
+      expect(await privacy.text()).toContain("Privacy Policy");
+    } finally {
+      await server.stop();
+    }
   });
 });
