@@ -3,9 +3,10 @@ import { createLogger } from "@/logger";
 const log = createLogger("github/compare");
 
 const GITHUB_API = "https://api.github.com";
+const REQUEST_TIMEOUT_MS = 10_000;
 
 export async function getDefaultBranch(githubRepo: string): Promise<string> {
-  const response = await fetch(`${GITHUB_API}/repos/${githubRepo}`);
+  const response = await fetch(`${GITHUB_API}/repos/${githubRepo}`, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
   if (!response.ok) {
     log.error("Failed to fetch repo", {
       githubRepo,
@@ -28,7 +29,9 @@ export interface ChangedFile {
 // Deliberately base...head (not before/after) so this reflects cumulative
 // drift from the shared baseline, not just the latest push's delta.
 export async function compareBranches(owner: string, repo: string, base: string, head: string): Promise<ChangedFile[]> {
-  const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/compare/${base}...${head}`);
+  const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/compare/${base}...${head}`, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
   if (!response.ok) {
     log.error("Failed to compare branches", {
       owner,
