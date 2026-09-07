@@ -33,6 +33,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.sqlite-wal
 *.sqlite-shm
 
+# local planning notes, not part of the project itself
+notes
+
 # IntelliJ based IDEs
 .idea
 
