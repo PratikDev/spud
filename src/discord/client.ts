@@ -1,5 +1,6 @@
 import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 
+import { endActiveProjectsForGuild } from "@/db";
 import { env } from "@/env";
 import { createLogger } from "@/logger";
 import { commands } from "./commands";
@@ -12,6 +13,17 @@ export const client = new Client({
 
 client.once(Events.ClientReady, (readyClient) => {
   log.info("Logged in", { tag: readyClient.user.tag });
+});
+
+// Only fires on an actual kick/leave/delete, not a server outage (discord.js
+// emits guildUnavailable separately for that). The bot has already lost API
+// access to the guild by this point, so this only updates the database —
+// no attempt to unpin the board.
+client.on(Events.GuildDelete, async (guild) => {
+  const count = await endActiveProjectsForGuild(guild.id);
+  if (count > 0) {
+    log.info("Ended active projects after guild removal", { guildId: guild.id, count });
+  }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

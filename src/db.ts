@@ -78,3 +78,14 @@ export async function getProjectByPublicId(publicId: string): Promise<Project | 
   log.debug(project ? "Found project by public id" : "No project found by public id", { publicId });
   return project;
 }
+
+// A guild can have multiple active projects at once (one per channel), so this
+// ends all of them, not just one.
+export async function endActiveProjectsForGuild(guildId: string): Promise<number> {
+  const rs = await db.execute({
+    sql: "UPDATE projects SET status = 'ended', ended_at = strftime('%s', 'now') WHERE guild_id = ? AND status = 'active'",
+    args: [guildId],
+  });
+  log.debug("Ended active projects for guild", { guildId, count: rs.rowsAffected });
+  return rs.rowsAffected;
+}
