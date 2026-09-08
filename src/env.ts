@@ -25,6 +25,15 @@ export const env = {
   // columns (webhook_secret, gemini_api_key) at rest — generate with
   // `openssl rand -base64 32`.
   ENCRYPTION_KEY: requireEnv("ENCRYPTION_KEY"),
+  // GitHub App — used to mint short-lived installation tokens so Spud can read
+  // private repos the App is installed on (see github/app-auth.ts).
+  GITHUB_APP_ID: requireEnv("GITHUB_APP_ID"),
+  // Base64-encoded PEM private key (a raw multi-line PEM doesn't fit a single
+  // .env line) — decoded before use.
+  GITHUB_APP_PRIVATE_KEY: requireEnv("GITHUB_APP_PRIVATE_KEY"),
+  // The App's slug from its public page URL (github.com/apps/<slug>) — used
+  // to build its install link.
+  GITHUB_APP_SLUG: requireEnv("GITHUB_APP_SLUG"),
   // GitHub webhook (Feature 4) — all optional: PORT has a sane default,
   // and PUBLIC_BASE_URL is only used for display.
   PORT: Number(optionalEnv("PORT") ?? 3000),
