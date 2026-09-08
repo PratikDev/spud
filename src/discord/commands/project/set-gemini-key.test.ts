@@ -7,9 +7,10 @@ import { handleModalSubmit, MODAL_CUSTOM_ID_PREFIX } from "@/discord/commands/pr
 
 async function insertProject(channelId: string, guildId: string, teamLead: string): Promise<number> {
   const rs = await db.execute({
-    sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, webhook_secret, team_lead)
-          VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-    args: [channelId, guildId, "Gemini Key Test", "o/r", "main", "secret", teamLead],
+    sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, team_lead)
+          VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+    // github_repo derived from channelId — only one active project per repo now.
+    args: [channelId, guildId, "Gemini Key Test", `o/${channelId}`, "main", teamLead],
   });
   return (rs.rows[0] as unknown as { id: number }).id;
 }

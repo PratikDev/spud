@@ -18,9 +18,9 @@ let projectId: number;
 
 beforeAll(async () => {
   const rs = await db.execute({
-    sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, webhook_secret, team_lead)
-          VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-    args: ["chan-tasks-test", "guild-tasks-test", "Tasks Test", "o/r", "main", "secret", "tester"],
+    sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, team_lead)
+          VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+    args: ["chan-tasks-test", "guild-tasks-test", "Tasks Test", "o/r", "main", "tester"],
   });
   projectId = (rs.rows[0] as unknown as { id: number }).id;
 });
