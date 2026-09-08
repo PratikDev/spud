@@ -64,7 +64,7 @@ Catches "vibe coding" drift — claiming "auth" but also touching unrelated file
 - If flagged, the bot posts a nudge in the project's channel naming the unexpected files.
 - On the webhook's first `ping` event (sent automatically when GitHub adds the hook), the bot posts a one-time confirmation in the channel that the integration is live.
 - Pushes on a branch with no matching claimed task are silently ignored — nothing breaks, it just doesn't get scope-checked.
-- GitHub API calls are unauthenticated, so **the linked repo must be public**.
+- GitHub API calls use a short-lived installation token when Spud's [GitHub App](#github-app-authentication) is installed on the repo — including for private repos. Otherwise they fall back to unauthenticated calls, which only work on public repos.
 - Every webhook request is rate-limited per project (token bucket, 20-request burst, refills at 1/3s) after signature verification — once exhausted, further requests get a `429` until it refills. Outbound GitHub compare-API and Gemini calls are also timeboxed (10s and 15s respectively) so a hung request can't stall the handler indefinitely.
 
 ### Auto-close on merge (GitHub webhook)
@@ -76,6 +76,15 @@ Catches "vibe coding" drift — claiming "auth" but also touching unrelated file
 ### Encryption at rest
 
 The webhook secret and each project's Gemini API key are stored encrypted (AES-256-GCM, [`crypto.ts`](src/crypto.ts)), keyed by a server-side `ENCRYPTION_KEY` env var — not by the database's own storage layer, so this holds regardless of what the underlying host provides. Both are decrypted only at the point of use (HMAC comparison, the Gemini call) and are never written to logs.
+
+### GitHub App authentication
+
+Spud registers as a [GitHub App](https://github.com/apps/spud-discord-bot) with read-only **Contents** + **Metadata** permissions, so it can be installed on private repos rather than requiring every linked repo to be public.
+
+- No OAuth, no stored user tokens — [`github/app-auth.ts`](src/github/app-auth.ts) signs a short-lived (10 min) JWT as the App itself (RS256 via Node/Bun's built-in `crypto`, no JWT library), uses it to look up whether the App is installed on a given repo, and — if so — mints a 1-hour installation access token scoped to exactly those two permissions.
+- A fresh token is minted right before each use (`/project start`, and every drift-checking push) rather than cached, since installation tokens expire in an hour and pushes can land long after any earlier token would have.
+- If the App **isn't** installed on the linked repo, everything falls back to the previous unauthenticated behavior — public repos keep working exactly as before, and `/project start`'s replies include the install link so the team lead can add private-repo support without re-running the command.
+- No installation↔repo mapping is persisted anywhere — installation status is resolved fresh on every call instead, since the lookup is a single cheap API call and this avoids ever going stale (e.g. after someone uninstalls the App).
 
 ## Architecture
 
@@ -151,7 +160,7 @@ sequenceDiagram
 | Database | `@libsql/client` — [Turso](https://turso.tech) when `TURSO_DATABASE_URL` is set, a local SQLite file otherwise |
 | Webhook HTTP server | `Bun.serve` (built-in — no Express/Hono) |
 | LLM | `ai` (Vercel AI SDK) + `@ai-sdk/google`, Gemini |
-| GitHub API | raw `fetch` (no `octokit`) |
+| GitHub API | raw `fetch` (no `octokit`); GitHub App JWT auth via built-in `crypto` (no JWT library) |
 | HMAC verification + encryption at rest | Node/Bun built-in `crypto` |
 | Validation | `zod` |
 | Date parsing | `chrono-node` (natural-language timeline input for `/project configure`) |
@@ -164,6 +173,7 @@ Net dependencies: `discord.js`, `ai`, `@ai-sdk/google`, `@libsql/client`, `zod`,
 **Prerequisites:**
 - [Bun](https://bun.com) installed
 - A Discord application + bot ([Developer Portal](https://discord.com/developers/applications)) — see below if you haven't made one
+- A GitHub App ([github.com/settings/apps](https://github.com/settings/apps)) — see below if you haven't made one
 - Optional: a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) — only needed per-project, via `/project set-gemini-key`, to enable AI features (see "AI features (Gemini)" above)
 
 **1. Install dependencies**
@@ -184,6 +194,9 @@ cp .env.example .env
 | `DISCORD_CLIENT_ID` | yes | Application ID, from **General Information** |
 | `GEMINI_MODEL_NAME` | yes | e.g. `gemini-3.1-flash-lite` — the model Spud calls; each project's own key (see "AI features (Gemini)" above) authenticates the call |
 | `ENCRYPTION_KEY` | yes | Base64-encoded 32-byte key for AES-256-GCM, used to encrypt `webhook_secret` and `gemini_api_key` at rest. Generate with `openssl rand -base64 32` |
+| `GITHUB_APP_ID` | yes | From your [GitHub App](https://github.com/settings/apps)'s settings page |
+| `GITHUB_APP_SLUG` | yes | From the App's public page URL: `github.com/apps/<slug>` |
+| `GITHUB_APP_PRIVATE_KEY` | yes | The App's private key `.pem`, base64-encoded: `base64 -w0 your-key.pem` |
 | `PORT` | no | Webhook server port, defaults to `3000` |
 | `PUBLIC_BASE_URL` | no | Shown in `/project start`'s webhook setup message; without it you just get the raw path |
 | `TURSO_DATABASE_URL` | no | Hosted [Turso](https://turso.tech) database URL. Without it, falls back to a local SQLite file |
@@ -201,7 +214,16 @@ cp .env.example .env
 3. **General Information** → copy the Application ID into `DISCORD_CLIENT_ID`
 4. **OAuth2 → URL Generator** → scopes `bot` + `applications.commands`; permissions `Send Messages` and `Manage Messages` (needed to pin/unpin the board) → open the generated URL and invite it to your server
 
-**4. Register slash commands and run**
+**4. Create the GitHub App** (skip if you already have one)
+
+1. [github.com/settings/apps](https://github.com/settings/apps) → **New GitHub App**
+2. Uncheck "Active" under Webhook (Spud doesn't need the App's own webhook — see "GitHub App authentication" above)
+3. **Permissions → Repository permissions** → set **Contents: Read-only** and **Metadata: Read-only** (nothing else)
+4. Create the App, then copy its **App ID** into `GITHUB_APP_ID` and the slug from its URL (`github.com/apps/<slug>`) into `GITHUB_APP_SLUG`
+5. **Generate a private key** on the same page → base64-encode it into `GITHUB_APP_PRIVATE_KEY`: `base64 -w0 your-key.pem`
+6. **Install App** on whichever account/repos you want Spud to access
+
+**5. Register slash commands and run**
 
 ```bash
 bun run register-commands   # push commands to Discord (re-run after changing any command's shape)
@@ -230,7 +252,7 @@ Note: `.env` values must be unquoted for `--env-file` to parse them correctly (B
 ## Known limitations
 
 - **No data persistence without Turso configured** — without `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` set, the app falls back to a local SQLite file inside the container's own writable layer, wiped on every restart or redeploy. Set those two env vars to persist real data in a hosted Turso database instead (see "Running with Docker").
-- **GitHub repos must be public** — the compare API is called unauthenticated, so private repos won't work, and you're subject to GitHub's 60 requests/hour unauthenticated rate limit.
+- **Private repos need the GitHub App installed** — without it, GitHub API calls fall back to unauthenticated (public repos only, and subject to GitHub's 60 requests/hour unauthenticated rate limit). See "GitHub App authentication" above.
 - **Overlap detection can reject legitimate claims** — it's an LLM judgment call with no manual override; if it wrongly flags a genuinely different task as a duplicate, your only recourse is retrying `/claim` with a more detailed description.
 - **Branch names must match exactly** — `/done`, `/free`, `/delete`, and drift-checking all key off the exact branch name the bot generated. Push to a differently-named branch and it's silently never scope-checked — by design, not a crash.
 - **Single instance only** — one Discord gateway connection per process, and no request/session state is shareable across replicas; this isn't built to run as multiple instances behind a load balancer. Webhook rate limiting is also in-memory, so it resets on every restart and isn't shared across replicas.
