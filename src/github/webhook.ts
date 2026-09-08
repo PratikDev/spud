@@ -1,5 +1,5 @@
 import { decrypt } from "@/crypto";
-import { getProjectByPublicId } from "@/db";
+import { getActiveProjectByRepo } from "@/db";
 import { updateBoard } from "@/discord/board";
 import { client } from "@/discord/client";
 import { env } from "@/env";
@@ -13,22 +13,6 @@ import { findTaskByBranch, markTaskDone } from "@/tasks";
 import type { Project } from "@/types";
 
 const log = createLogger("github/webhook");
-
-// GitHub sends a "ping" event the moment a webhook is added — post the success
-// confirmation in the project's channel so the whole team knows drift-checking
-// is live, not just the admin who set it up (nothing sensitive in this message).
-async function notifyWebhookConnected(project: Project) {
-  const channel = await client.channels.fetch(project.channel_id);
-  if (!channel?.isTextBased() || !("send" in channel)) {
-    log.warn("Could not post ping confirmation — channel not sendable", { projectId: project.id });
-    return;
-  }
-
-  await channel.send(
-    `✅ The GitHub webhook for **${project.title}** (\`${project.github_repo}\`) was connected successfully — pushes will now be checked for scope drift.`,
-  );
-  log.info("Confirmed webhook connection", { projectId: project.id });
-}
 
 async function processPushEvent(project: Project, rawBody: string) {
   if (project.status !== "active") {
@@ -67,8 +51,15 @@ async function processPushEvent(project: Project, rawBody: string) {
 
   // Fresh token each time rather than caching one — installation tokens expire
   // after an hour, and pushes can land long after any earlier token would have.
-  const installation = await getInstallationToken(owner, repo).catch(() => null);
-  const changedFiles = await compareBranches(owner, repo, project.default_branch, branchId, installation?.token);
+  const installation = await getInstallationToken(owner, repo);
+  if (!installation) {
+    // The App was required at /project start — this means it's since been
+    // uninstalled. Never fall back to an unauthenticated call for it.
+    log.warn("Skipping drift check — GitHub App no longer installed", { projectId: project.id, branchId });
+    return;
+  }
+
+  const changedFiles = await compareBranches(owner, repo, project.default_branch, branchId, installation.token);
   if (changedFiles.length === 0) {
     log.debug("No changed files vs default branch", { projectId: project.id, branchId });
     return;
@@ -139,17 +130,41 @@ async function processPullRequestEvent(project: Project, rawBody: string) {
   });
 }
 
-export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github/:projectId">): Promise<Response> {
-  const project = await getProjectByPublicId(req.params.projectId);
-  if (!project) {
-    log.warn("Webhook request for unknown project", { publicId: req.params.projectId });
-    return new Response("Not found", { status: 404 });
+// A single App-level webhook (configured once, on the App's own settings page)
+// delivers push/pull_request events for every repo the App is installed on,
+// so the project is resolved from the payload's repository field.
+export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github/app">): Promise<Response> {
+  const rawBody = await req.text();
+  if (!verifySignature(rawBody, env.GITHUB_APP_WEBHOOK_SECRET, req.headers.get("x-hub-signature-256"))) {
+    log.warn("Rejected webhook request with bad signature");
+    return new Response("Invalid signature", { status: 401 });
   }
 
-  const rawBody = await req.text();
-  if (!verifySignature(rawBody, decrypt(project.webhook_secret), req.headers.get("x-hub-signature-256"))) {
-    log.warn("Rejected webhook request with bad signature", { projectId: project.id });
-    return new Response("Invalid signature", { status: 401 });
+  const githubEvent = req.headers.get("x-github-event");
+  if (githubEvent === "ping") {
+    // Sent once when the App's webhook URL is first configured — not scoped
+    // to any particular repo/installation, so there's nothing to route it to.
+    log.info("Received webhook ping");
+    return new Response("OK", { status: 200 });
+  }
+
+  let repoFullName: string | undefined;
+  try {
+    repoFullName = (JSON.parse(rawBody) as { repository?: { full_name: string } }).repository?.full_name;
+  } catch {
+    log.warn("Failed to parse webhook payload as JSON", { githubEvent });
+    return new Response("OK", { status: 200 });
+  }
+
+  if (!repoFullName) {
+    log.debug("Webhook event has no repository context, ignoring", { githubEvent });
+    return new Response("OK", { status: 200 });
+  }
+
+  const project = await getActiveProjectByRepo(repoFullName);
+  if (!project) {
+    log.debug("No active Spud project linked to this repo", { repoFullName, githubEvent });
+    return new Response("OK", { status: 200 });
   }
 
   if (!consumeToken(project.id)) {
@@ -160,14 +175,11 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
   // return 200 — GitHub treats non-2xx as a delivery failure and retries/flags
   // the webhook as unhealthy, which we don't want for our own no-op cases.
   const startedAt = performance.now();
-  const githubEvent = req.headers.get("x-github-event");
 
   try {
     log.debug("Handling webhook event", { projectId: project.id, githubEvent });
 
-    if (githubEvent === "ping") {
-      await notifyWebhookConnected(project);
-    } else if (githubEvent === "push") {
+    if (githubEvent === "push") {
       await processPushEvent(project, rawBody);
     } else if (githubEvent === "pull_request") {
       await processPullRequestEvent(project, rawBody);
@@ -204,7 +216,7 @@ export function startWebhookServer() {
       "/health": new Response("OK"),
       "/terms": new Response(termsFile),
       "/privacy": new Response(privacyFile),
-      "/webhooks/github/:projectId": {
+      "/webhooks/github/app": {
         POST: handleWebhookRequest,
       },
     },
