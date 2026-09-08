@@ -3,6 +3,7 @@ import { getProjectByPublicId } from "@/db";
 import { updateBoard } from "@/discord/board";
 import { client } from "@/discord/client";
 import { env } from "@/env";
+import { getInstallationToken } from "@/github/app-auth";
 import { compareBranches } from "@/github/compare";
 import { consumeToken } from "@/github/rate-limit";
 import { verifySignature } from "@/github/verify";
@@ -64,7 +65,10 @@ async function processPushEvent(project: Project, rawBody: string) {
     return;
   }
 
-  const changedFiles = await compareBranches(owner, repo, project.default_branch, branchId);
+  // Fresh token each time rather than caching one — installation tokens expire
+  // after an hour, and pushes can land long after any earlier token would have.
+  const installation = await getInstallationToken(owner, repo).catch(() => null);
+  const changedFiles = await compareBranches(owner, repo, project.default_branch, branchId, installation?.token);
   if (changedFiles.length === 0) {
     log.debug("No changed files vs default branch", { projectId: project.id, branchId });
     return;
