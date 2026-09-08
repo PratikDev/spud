@@ -22,8 +22,7 @@ export const env = {
   // set-gemini-key, so only the model choice is global.
   GEMINI_MODEL_NAME: requireEnv("GEMINI_MODEL_NAME"),
   // Base64-encoded 32-byte key for AES-256-GCM, used to encrypt sensitive
-  // columns (webhook_secret, gemini_api_key) at rest — generate with
-  // `openssl rand -base64 32`.
+  // columns (gemini_api_key) at rest — generate with `openssl rand -base64 32`.
   ENCRYPTION_KEY: requireEnv("ENCRYPTION_KEY"),
   // GitHub App — used to mint short-lived installation tokens so Spud can read
   // private repos the App is installed on (see github/app-auth.ts).
@@ -34,8 +33,12 @@ export const env = {
   // The App's slug from its public page URL (github.com/apps/<slug>) — used
   // to build its install link.
   GITHUB_APP_SLUG: requireEnv("GITHUB_APP_SLUG"),
-  // GitHub webhook (Feature 4) — all optional: PORT has a sane default,
-  // and PUBLIC_BASE_URL is only used for display.
+  // Secret configured on the App's own Webhook settings page — a single App-level
+  // webhook delivers push/pull_request events for every repo it's installed on,
+  // instead of each project needing its own manually-added webhook.
+  GITHUB_APP_WEBHOOK_SECRET: requireEnv("GITHUB_APP_WEBHOOK_SECRET"),
+  // PORT has a sane default; PUBLIC_BASE_URL is only used for display (the
+  // landing-page link in /help).
   PORT: Number(optionalEnv("PORT") ?? 3000),
   PUBLIC_BASE_URL: optionalEnv("PUBLIC_BASE_URL"),
   // Turso — optional: db.ts falls back to a local SQLite file (DATABASE_PATH,
