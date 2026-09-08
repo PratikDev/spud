@@ -10,14 +10,14 @@ A project is scoped to a **channel**, not the whole server, so one Discord serve
 
 | Command | Access | Description |
 |---|---|---|
-| `/project start <title> <github-repo>` | Anyone | Starts a new active project in this channel, links a GitHub repo, generates a webhook secret. Whoever runs it becomes the project's **team lead** |
+| `/project start <title> <github-repo>` | Anyone | Starts a new active project in this channel, linking a GitHub repo the [GitHub App](#github-app-authentication) is already installed on. Whoever runs it becomes the project's **team lead** |
 | `/project configure [start-time] [end-time] [rulebook]` | Team lead only | Sets or updates the project's timeline (parsed from natural language via `chrono-node`, e.g. "July 25 9am") and rulebook file. Any subset of fields can be provided per call |
 | `/project end` | Team lead only | Ends the active project, archives (doesn't delete) its board/task data, unpins the board |
 | `/project status` | Team lead only | Shows the active project's title, repo, task counts, timeline, and rulebook link |
 | `/project list` | Server admin | Lists all active projects across the server (bird's-eye view, ephemeral) |
 | `/project set-gemini-key` | Team lead only | Opens a modal to set or remove this project's own Gemini API key, enabling/disabling AI features |
 
-`/project start` is open to anyone — whoever runs it in a channel becomes that project's team lead, no `Administrator` permission required. `/project configure`, `/project end`, and `/project status` are then restricted to that specific Discord member — with **no admin override**. Only `/project list` requires Discord's `Administrator` permission, since it's a cross-channel, server-wide view. This mixed anyone/team-lead/admin model can't be expressed through Discord's per-command default-permission system (which applies to a whole command, not per-subcommand), so it's enforced in application code instead (see [authorization.ts](src/discord/authorization.ts)). A channel can only have one *active* project at a time, enforced at the database level (a partial unique index), not just in application code.
+`/project start` is open to anyone — whoever runs it in a channel becomes that project's team lead, no `Administrator` permission required. `/project configure`, `/project end`, and `/project status` are then restricted to that specific Discord member — with **no admin override**. Only `/project list` requires Discord's `Administrator` permission, since it's a cross-channel, server-wide view. This mixed anyone/team-lead/admin model can't be expressed through Discord's per-command default-permission system (which applies to a whole command, not per-subcommand), so it's enforced in application code instead (see [authorization.ts](src/discord/authorization.ts)). A channel can only have one *active* project at a time, **and a repo can only be linked to one active project at a time** — both enforced at the database level (partial unique indexes), not just in application code. The latter is also what lets the GitHub App's webhook (one URL for every installed repo) resolve an incoming event to exactly one project.
 
 Team lead has no reassignment path yet — if the team lead leaves the server, `/project configure`/`end`/`status` become permanently unusable for that project (no admin fallback, no migration tool to patch it).
 
@@ -58,13 +58,12 @@ Claiming an *existing* unclaimed task skips all of this — no LLM call, no new 
 
 Catches "vibe coding" drift — claiming "auth" but also touching unrelated files — without anyone self-reporting.
 
-- On `/project start`, the repo's default branch (not a hardcoded `main` — plenty of repos still use `master`) is fetched once and cached on the project row, and a webhook secret is generated and shown to the team lead (ephemeral, once) along with the payload URL, content type, and which events to select in GitHub's **Settings → Webhooks → Add webhook**.
+- Push/pull-request delivery is fully automatic — see [GitHub App authentication](#github-app-authentication) below. Linking the repo at `/project start` is all that's needed.
+- On `/project start`, the repo's default branch (not a hardcoded `main` — plenty of repos still use `master`) is fetched once, authenticated via the GitHub App, and cached on the project row.
 - On every `push` whose branch isn't the cached default branch, the bot diffs it against that default branch via GitHub's compare API — pushes to the default branch itself are ignored before any database lookup, since they can never be a task's working branch.
 - If the branch matches a currently-*claimed* task **and the project has a Gemini key configured**, the changed files + task description go to Gemini ([`llm/drift.ts`](src/llm/drift.ts)), which judges whether the diff still looks consistent with the task — biased toward not flagging, since a false alarm costs more trust than a missed one. No key configured means the drift check is silently skipped — before the GitHub compare-API call even happens, not just before the Gemini call.
 - If flagged, the bot posts a nudge in the project's channel naming the unexpected files.
-- On the webhook's first `ping` event (sent automatically when GitHub adds the hook), the bot posts a one-time confirmation in the channel that the integration is live.
 - Pushes on a branch with no matching claimed task are silently ignored — nothing breaks, it just doesn't get scope-checked.
-- GitHub API calls use a short-lived installation token when Spud's [GitHub App](#github-app-authentication) is installed on the repo — including for private repos. Otherwise they fall back to unauthenticated calls, which only work on public repos.
 - Every webhook request is rate-limited per project (token bucket, 20-request burst, refills at 1/3s) after signature verification — once exhausted, further requests get a `429` until it refills. Outbound GitHub compare-API and Gemini calls are also timeboxed (10s and 15s respectively) so a hung request can't stall the handler indefinitely.
 
 ### Auto-close on merge (GitHub webhook)
@@ -75,16 +74,17 @@ Catches "vibe coding" drift — claiming "auth" but also touching unrelated file
 
 ### Encryption at rest
 
-The webhook secret and each project's Gemini API key are stored encrypted (AES-256-GCM, [`crypto.ts`](src/crypto.ts)), keyed by a server-side `ENCRYPTION_KEY` env var — not by the database's own storage layer, so this holds regardless of what the underlying host provides. Both are decrypted only at the point of use (HMAC comparison, the Gemini call) and are never written to logs.
+Each project's Gemini API key is stored encrypted (AES-256-GCM, [`crypto.ts`](src/crypto.ts)), keyed by a server-side `ENCRYPTION_KEY` env var — not by the database's own storage layer, so this holds regardless of what the underlying host provides. It's decrypted only at the point of use (the Gemini call) and is never written to logs.
 
 ### GitHub App authentication
 
-Spud registers as a [GitHub App](https://github.com/apps/spud-discord-bot) with read-only **Contents** + **Metadata** permissions, so it can be installed on private repos rather than requiring every linked repo to be public.
+Spud registers as a [GitHub App](https://github.com/apps/spud-discord-bot) with read-only **Contents**, **Metadata**, and **Pull requests** permissions — the last one specifically because GitHub requires it to subscribe to the `pull_request` webhook event, not because Spud reads pull request content directly. **The App must be installed on a repo before `/project start` will link it**, so this works identically for public and private repos.
 
 - No OAuth, no stored user tokens — [`github/app-auth.ts`](src/github/app-auth.ts) signs a short-lived (10 min) JWT as the App itself (RS256 via Node/Bun's built-in `crypto`, no JWT library), uses it to look up whether the App is installed on a given repo, and — if so — mints a 1-hour installation access token scoped to exactly those two permissions.
 - A fresh token is minted right before each use (`/project start`, and every drift-checking push) rather than cached, since installation tokens expire in an hour and pushes can land long after any earlier token would have.
-- If the App **isn't** installed on the linked repo, everything falls back to the previous unauthenticated behavior — public repos keep working exactly as before, and `/project start`'s replies include the install link so the team lead can add private-repo support without re-running the command.
+- If the App **isn't** installed on the repo someone tries to link, `/project start` fails with the install link — install it, then re-run the command.
 - No installation↔repo mapping is persisted anywhere — installation status is resolved fresh on every call instead, since the lookup is a single cheap API call and this avoids ever going stale (e.g. after someone uninstalls the App).
+- The App has a single webhook (configured once, on its own Settings page) subscribed to `push` and `pull_request`, verified with one shared `GITHUB_APP_WEBHOOK_SECRET` — GitHub delivers events for every installed repo to that one URL ([`github/webhook.ts`](src/github/webhook.ts)), which resolves each delivery to a project by matching the payload's `repository.full_name` (see the repo-uniqueness constraint above). Installing the App is the only setup step.
 
 ## Architecture
 
@@ -96,8 +96,8 @@ flowchart LR
     Discord <--> Spud["Spud\n(single Bun process)"]
     Spud <--> DB[("SQLite")]
     Spud <--> Gemini["Gemini"]
-    GitHub["GitHub"] -->|push / pull_request / ping webhook| Spud
-    Spud -->|compare API| GitHub
+    GitHub["GitHub App"] -->|push / pull_request webhook\n(one URL, every installed repo)| Spud
+    Spud -->|JWT + installation token| GitHub
 ```
 
 **Webhook request flow** in more detail — this is the part with the most moving pieces:
@@ -111,43 +111,46 @@ sequenceDiagram
     participant LLM as Gemini
     participant Discord as Project channel
 
-    GH->>HTTP: POST /webhooks/github/:projectId (X-Hub-Signature-256)
-    HTTP->>DB: look up project + webhook_secret
-    HTTP->>HTTP: verify HMAC-SHA256 (constant-time)
+    GH->>HTTP: POST /webhooks/github/app (X-Hub-Signature-256)
+    HTTP->>HTTP: verify HMAC-SHA256 against GITHUB_APP_WEBHOOK_SECRET
     alt signature invalid
         HTTP-->>GH: 401
-    else rate limit exhausted (per project)
-        HTTP-->>GH: 429
     else ping event
-        HTTP-->>GH: 200
-        HTTP->>Discord: "webhook connected successfully"
-    else push event
-        alt branch is the cached default branch
-            HTTP-->>GH: 200 (no-op, no DB lookup)
-        else
-            HTTP->>DB: find claimed task by branch name
-            alt no matching claimed task
-                HTTP-->>GH: 200 (no-op)
-            else task found
-                alt no Gemini key configured for project
-                    HTTP-->>GH: 200 (drift check skipped, no compare call)
-                else
-                    HTTP->>API: compare(cached default branch, branch)
-                    HTTP->>LLM: task description + changed files -> isDrifted?
-                    alt drifted
-                        HTTP->>Discord: nudge naming the unexpected files
+        HTTP-->>GH: 200 (no repo context, nothing to route)
+    else push or pull_request event
+        HTTP->>DB: find active project by repository.full_name
+        alt no linked active project
+            HTTP-->>GH: 200 (no-op)
+        else project found
+            alt rate limit exhausted (per project)
+                HTTP-->>GH: 429
+            else push event, branch is the cached default branch
+                HTTP-->>GH: 200 (no-op, no DB lookup)
+            else push event
+                HTTP->>DB: find claimed task by branch name
+                alt no matching claimed task
+                    HTTP-->>GH: 200 (no-op)
+                else task found
+                    alt no Gemini key configured for project
+                        HTTP-->>GH: 200 (drift check skipped, no compare call)
+                    else
+                        HTTP->>API: compare(cached default branch, branch)
+                        HTTP->>LLM: task description + changed files -> isDrifted?
+                        alt drifted
+                            HTTP->>Discord: nudge naming the unexpected files
+                        end
+                        HTTP-->>GH: 200
                     end
-                    HTTP-->>GH: 200
                 end
+            else pull_request event (closed + merged)
+                HTTP->>DB: find claimed task by merged branch name
+                alt task found
+                    HTTP->>DB: mark task done
+                    HTTP->>Discord: board update + merge confirmation
+                end
+                HTTP-->>GH: 200
             end
         end
-    else pull_request event (closed + merged)
-        HTTP->>DB: find claimed task by merged branch name
-        alt task found
-            HTTP->>DB: mark task done
-            HTTP->>Discord: board update + merge confirmation
-        end
-        HTTP-->>GH: 200
     end
 ```
 
@@ -173,7 +176,7 @@ Net dependencies: `discord.js`, `ai`, `@ai-sdk/google`, `@libsql/client`, `zod`,
 **Prerequisites:**
 - [Bun](https://bun.com) installed
 - A Discord application + bot ([Developer Portal](https://discord.com/developers/applications)) — see below if you haven't made one
-- A GitHub App ([github.com/settings/apps](https://github.com/settings/apps)) — see below if you haven't made one
+- A GitHub App ([github.com/settings/apps](https://github.com/settings/apps)) — see below if you haven't made one. **Required**, not optional — `/project start` refuses to link a repo the App isn't installed on (see "GitHub App authentication" above)
 - Optional: a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) — only needed per-project, via `/project set-gemini-key`, to enable AI features (see "AI features (Gemini)" above)
 
 **1. Install dependencies**
@@ -193,12 +196,13 @@ cp .env.example .env
 | `DISCORD_TOKEN` | yes | Bot token, from the Developer Portal's **Bot** page |
 | `DISCORD_CLIENT_ID` | yes | Application ID, from **General Information** |
 | `GEMINI_MODEL_NAME` | yes | e.g. `gemini-3.1-flash-lite` — the model Spud calls; each project's own key (see "AI features (Gemini)" above) authenticates the call |
-| `ENCRYPTION_KEY` | yes | Base64-encoded 32-byte key for AES-256-GCM, used to encrypt `webhook_secret` and `gemini_api_key` at rest. Generate with `openssl rand -base64 32` |
+| `ENCRYPTION_KEY` | yes | Base64-encoded 32-byte key for AES-256-GCM, used to encrypt `gemini_api_key` at rest. Generate with `openssl rand -base64 32` |
 | `GITHUB_APP_ID` | yes | From your [GitHub App](https://github.com/settings/apps)'s settings page |
 | `GITHUB_APP_SLUG` | yes | From the App's public page URL: `github.com/apps/<slug>` |
 | `GITHUB_APP_PRIVATE_KEY` | yes | The App's private key `.pem`, pasted as-is — quote it in `.env` so the real newlines survive (Render's env var UI accepts multi-line values directly, no encoding needed either) |
+| `GITHUB_APP_WEBHOOK_SECRET` | yes | The secret you set on the App's own **Webhook** settings page — one App-level webhook delivers events for every installed repo |
 | `PORT` | no | Webhook server port, defaults to `3000` |
-| `PUBLIC_BASE_URL` | no | Shown in `/project start`'s webhook setup message; without it you just get the raw path |
+| `PUBLIC_BASE_URL` | no | Shown as the landing-page link in `/help`; without it you just get the raw path |
 | `TURSO_DATABASE_URL` | no | Hosted [Turso](https://turso.tech) database URL. Without it, falls back to a local SQLite file |
 | `TURSO_AUTH_TOKEN` | no | Turso auth token — must be a **database** token (`turso db tokens create <db-name>`), not an account-level API token |
 | `DATABASE_PATH` | no | Local SQLite file path, only used when `TURSO_DATABASE_URL` is unset. Defaults to `spud.sqlite` |
@@ -217,11 +221,12 @@ cp .env.example .env
 **4. Create the GitHub App** (skip if you already have one)
 
 1. [github.com/settings/apps](https://github.com/settings/apps) → **New GitHub App**
-2. Uncheck "Active" under Webhook (Spud doesn't need the App's own webhook — see "GitHub App authentication" above)
-3. **Permissions → Repository permissions** → set **Contents: Read-only** and **Metadata: Read-only** (nothing else)
-4. Create the App, then copy its **App ID** into `GITHUB_APP_ID` and the slug from its URL (`github.com/apps/<slug>`) into `GITHUB_APP_SLUG`
-5. **Generate a private key** on the same page → paste its contents as-is into `GITHUB_APP_PRIVATE_KEY` (quoted in `.env`)
-6. **Install App** on whichever account/repos you want Spud to access
+2. Under **Webhook**: check **Active**, set the **Webhook URL** to `<your public URL>/webhooks/github/app`, and set a **Secret** → copy that secret into `GITHUB_APP_WEBHOOK_SECRET`
+3. **Permissions → Repository permissions** → set **Contents: Read-only**, **Metadata: Read-only**, and **Pull requests: Read-only** (the last one is required by GitHub to receive `pull_request` events — nothing else)
+4. **Subscribe to events** → check **Push** and **Pull request**
+5. Create the App, then copy its **App ID** into `GITHUB_APP_ID` and the slug from its URL (`github.com/apps/<slug>`) into `GITHUB_APP_SLUG`
+6. **Generate a private key** on the same page → paste its contents as-is into `GITHUB_APP_PRIVATE_KEY` (quoted in `.env`)
+7. **Install App** on whichever account/repos you want Spud to access — required before `/project start` will link them
 
 **5. Register slash commands and run**
 
@@ -230,9 +235,9 @@ bun run register-commands   # push commands to Discord (re-run after changing an
 bun run dev                 # or `bun run start` without file-watching
 ```
 
-Try `/project start` in a channel (anyone can run it — no admin permission needed), then `/claim`. Run `/project set-gemini-key` beforehand if you want overlap detection and drift nudges — it's optional, everything else works without it.
+Try `/project start` in a channel (anyone can run it — no admin permission needed) with a repo the App is installed on, then `/claim`. Run `/project set-gemini-key` beforehand if you want overlap detection and drift nudges — it's optional, everything else works without it.
 
-**Testing the GitHub webhook locally:** point `ngrok` (or similar) at your `PORT`, set `PUBLIC_BASE_URL` to the ngrok URL, and use the payload URL `/project start` gives you when adding the webhook on a public repo.
+**Testing the GitHub webhook locally:** point `ngrok` (or similar) at your `PORT`, and set the App's **Webhook URL** (step 2 above) to `<ngrok URL>/webhooks/github/app`. Since it's one App-level webhook rather than one per project, this only needs setting once, not per project.
 
 ## Running with Docker
 
@@ -252,7 +257,7 @@ Note: `.env` values must be unquoted for `--env-file` to parse them correctly (B
 ## Known limitations
 
 - **No data persistence without Turso configured** — without `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` set, the app falls back to a local SQLite file inside the container's own writable layer, wiped on every restart or redeploy. Set those two env vars to persist real data in a hosted Turso database instead (see "Running with Docker").
-- **Private repos need the GitHub App installed** — without it, GitHub API calls fall back to unauthenticated (public repos only, and subject to GitHub's 60 requests/hour unauthenticated rate limit). See "GitHub App authentication" above.
+- **The GitHub App must be installed before linking a repo** — `/project start` refuses any repo, public or private, that the App isn't installed on. See "GitHub App authentication" above.
 - **Overlap detection can reject legitimate claims** — it's an LLM judgment call with no manual override; if it wrongly flags a genuinely different task as a duplicate, your only recourse is retrying `/claim` with a more detailed description.
 - **Branch names must match exactly** — `/done`, `/free`, `/delete`, and drift-checking all key off the exact branch name the bot generated. Push to a differently-named branch and it's silently never scope-checked — by design, not a crash.
 - **Single instance only** — one Discord gateway connection per process, and no request/session state is shareable across replicas; this isn't built to run as multiple instances behind a load balancer. Webhook rate limiting is also in-memory, so it resets on every restart and isn't shared across replicas.
