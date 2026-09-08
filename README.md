@@ -196,7 +196,7 @@ cp .env.example .env
 | `ENCRYPTION_KEY` | yes | Base64-encoded 32-byte key for AES-256-GCM, used to encrypt `webhook_secret` and `gemini_api_key` at rest. Generate with `openssl rand -base64 32` |
 | `GITHUB_APP_ID` | yes | From your [GitHub App](https://github.com/settings/apps)'s settings page |
 | `GITHUB_APP_SLUG` | yes | From the App's public page URL: `github.com/apps/<slug>` |
-| `GITHUB_APP_PRIVATE_KEY` | yes | The App's private key `.pem`, base64-encoded: `base64 -w0 your-key.pem` |
+| `GITHUB_APP_PRIVATE_KEY` | yes | The App's private key `.pem`, pasted as-is — quote it in `.env` so the real newlines survive (Render's env var UI accepts multi-line values directly, no encoding needed either) |
 | `PORT` | no | Webhook server port, defaults to `3000` |
 | `PUBLIC_BASE_URL` | no | Shown in `/project start`'s webhook setup message; without it you just get the raw path |
 | `TURSO_DATABASE_URL` | no | Hosted [Turso](https://turso.tech) database URL. Without it, falls back to a local SQLite file |
@@ -220,7 +220,7 @@ cp .env.example .env
 2. Uncheck "Active" under Webhook (Spud doesn't need the App's own webhook — see "GitHub App authentication" above)
 3. **Permissions → Repository permissions** → set **Contents: Read-only** and **Metadata: Read-only** (nothing else)
 4. Create the App, then copy its **App ID** into `GITHUB_APP_ID` and the slug from its URL (`github.com/apps/<slug>`) into `GITHUB_APP_SLUG`
-5. **Generate a private key** on the same page → base64-encode it into `GITHUB_APP_PRIVATE_KEY`: `base64 -w0 your-key.pem`
+5. **Generate a private key** on the same page → paste its contents as-is into `GITHUB_APP_PRIVATE_KEY` (quoted in `.env`)
 6. **Install App** on whichever account/repos you want Spud to access
 
 **5. Register slash commands and run**
