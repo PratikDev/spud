@@ -28,8 +28,8 @@ export const env = {
   // GitHub App — used to mint short-lived installation tokens so Spud can read
   // private repos the App is installed on (see github/app-auth.ts).
   GITHUB_APP_ID: requireEnv("GITHUB_APP_ID"),
-  // Base64-encoded PEM private key (a raw multi-line PEM doesn't fit a single
-  // .env line) — decoded before use.
+  // The App's private key .pem, quoted as-is in .env (Bun's env loader keeps
+  // embedded newlines inside a quoted value) — no encoding needed.
   GITHUB_APP_PRIVATE_KEY: requireEnv("GITHUB_APP_PRIVATE_KEY"),
   // The App's slug from its public page URL (github.com/apps/<slug>) — used
   // to build its install link.

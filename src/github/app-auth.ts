@@ -8,7 +8,7 @@ const log = createLogger("github/app-auth");
 const GITHUB_API = "https://api.github.com";
 const REQUEST_TIMEOUT_MS = 10_000;
 
-const privateKey = Buffer.from(env.GITHUB_APP_PRIVATE_KEY, "base64").toString("utf8");
+const privateKey = env.GITHUB_APP_PRIVATE_KEY;
 
 export const APP_INSTALL_URL = `https://github.com/apps/${env.GITHUB_APP_SLUG}/installations/new`;
 
