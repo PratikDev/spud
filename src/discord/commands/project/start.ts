@@ -8,6 +8,7 @@ import { encrypt } from "@/crypto";
 import { db, getActiveProject } from "@/db";
 import { updateBoard } from "@/discord/board";
 import { env } from "@/env";
+import { APP_INSTALL_URL, getInstallationToken } from "@/github/app-auth";
 import { getDefaultBranch } from "@/github/compare";
 
 const inputSchema = z.object({
@@ -51,14 +52,23 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const { title, githubRepo } = parsed.data;
   const webhookSecret = randomBytes(32).toString("hex");
 
+  // Regex-validated as owner/repo above, so both parts are always present.
+  const [repoOwner, repoName] = githubRepo.split("/") as [string, string];
+  const installation = await getInstallationToken(repoOwner, repoName).catch(() => null);
+
   let defaultBranch: string;
   try {
     // Fetched once here and cached on the project row, rather than re-fetched on
     // every push — also doubles as an early check that the repo actually exists.
-    defaultBranch = await getDefaultBranch(githubRepo);
+    // Uses the GitHub App's installation token when it's installed on this repo
+    // (works for private repos too); falls back to an unauthenticated call
+    // otherwise, which only works for public repos.
+    defaultBranch = await getDefaultBranch(githubRepo, installation?.token);
   } catch {
     await interaction.reply({
-      content: `Couldn't reach \`${githubRepo}\` on GitHub — check that it exists and is public.`,
+      content: installation
+        ? `Couldn't reach \`${githubRepo}\` on GitHub even with the GitHub App installed — check that the repo still exists.`
+        : `Couldn't reach \`${githubRepo}\` on GitHub. If it's private, install the GitHub App first, then try again: ${APP_INSTALL_URL}`,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -117,7 +127,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       "",
       "Add this under the repo's **Settings → Webhooks → Add webhook**.",
       "",
-      `Note: drift checks call the GitHub API unauthenticated, so \`${githubRepo}\` needs to be a **public** repo.`,
+      installation
+        ? "Drift checks are authenticated via the installed GitHub App, so private repos work too."
+        : `Drift checks call the GitHub API unauthenticated, so \`${githubRepo}\` needs to stay a **public** repo — or install the GitHub App for private-repo support: ${APP_INSTALL_URL}`,
     ].join("\n"),
     flags: MessageFlags.Ephemeral,
   });
