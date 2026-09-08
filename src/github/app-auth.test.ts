@@ -38,10 +38,9 @@ describe("signAppJwt", () => {
     const [headerPart, payloadPart, signaturePart] = jwt.split(".");
     const signingInput = `${headerPart}.${payloadPart}`;
 
-    const privateKey = Buffer.from(env.GITHUB_APP_PRIVATE_KEY, "base64").toString("utf8");
     const publicKey = createVerify("RSA-SHA256").update(signingInput);
     // node:crypto can derive the public key check straight from the private key PEM.
-    const isValid = publicKey.verify(privateKey, Buffer.from(signaturePart as string, "base64url"));
+    const isValid = publicKey.verify(env.GITHUB_APP_PRIVATE_KEY, Buffer.from(signaturePart as string, "base64url"));
 
     expect(isValid).toBe(true);
   });
