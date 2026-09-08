@@ -57,10 +57,7 @@
 
 <h2>3. Connecting a GitHub repository</h2>
 <p>
-  When a team lead runs <code>/project start</code> and links a repository, they confirm they have
-  the right to configure a webhook on that repository. Spud currently reads only public repositories
-  over GitHub's unauthenticated API — it is not granted, and does not request, any special access to
-  the repository at this time.
+  Spud connects to GitHub repositories through its own <a href="https://github.com/apps/spud-discord-bot" target="_blank" rel="noopener">GitHub App</a>, installed by whoever controls the repository — Spud itself never requests or stores your GitHub credentials. The App requests read-only access to a repository's contents, metadata, and pull requests, solely to compare branches and detect merges for scope-drift checking. When a team lead runs <code>/project start</code>, they confirm the App is already installed on that repository and that they're authorized to link it.
 </p>
 
 <h2>4. Acceptable use</h2>
@@ -68,7 +65,7 @@
   <li>Don't attempt to bypass or exhaust the webhook endpoint's rate limiting.</li>
   <li>Don't submit task descriptions, project titles, or other content that violates
     <a href="https://discord.com/guidelines" target="_blank" rel="noopener">Discord's Community Guidelines</a>.</li>
-  <li>Don't attempt to access, guess, or misuse another project's webhook secret.</li>
+  <li>Don't link a repository you don't control or aren't authorized to connect the GitHub App to.</li>
 </ul>
 
 <h2>5. No warranty on automated judgments</h2>
