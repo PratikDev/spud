@@ -1,13 +1,10 @@
-import { randomBytes } from "node:crypto";
 import { LibsqlError } from "@libsql/client";
 import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import { MessageFlags } from "discord.js";
 import { z } from "zod";
 
-import { encrypt } from "@/crypto";
-import { db, getActiveProject } from "@/db";
+import { db, getActiveProject, getActiveProjectByRepo } from "@/db";
 import { updateBoard } from "@/discord/board";
-import { env } from "@/env";
 import { APP_INSTALL_URL, getInstallationToken } from "@/github/app-auth";
 import { getDefaultBranch } from "@/github/compare";
 
@@ -50,25 +47,43 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   const { title, githubRepo } = parsed.data;
-  const webhookSecret = randomBytes(32).toString("hex");
+
+  if (await getActiveProject(interaction.channelId)) {
+    await interaction.reply({
+      content: "This channel already has an active project. Run `/project end` first.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  if (await getActiveProjectByRepo(githubRepo)) {
+    await interaction.reply({
+      content: `\`${githubRepo}\` is already linked to another active project in a different channel.`,
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
 
   // Regex-validated as owner/repo above, so both parts are always present.
   const [repoOwner, repoName] = githubRepo.split("/") as [string, string];
   const installation = await getInstallationToken(repoOwner, repoName).catch(() => null);
 
+  if (!installation) {
+    await interaction.reply({
+      content: `Spud needs the GitHub App installed on \`${githubRepo}\` first — install it, then try again: ${APP_INSTALL_URL}`,
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
   let defaultBranch: string;
   try {
     // Fetched once here and cached on the project row, rather than re-fetched on
     // every push — also doubles as an early check that the repo actually exists.
-    // Uses the GitHub App's installation token when it's installed on this repo
-    // (works for private repos too); falls back to an unauthenticated call
-    // otherwise, which only works for public repos.
-    defaultBranch = await getDefaultBranch(githubRepo, installation?.token);
+    defaultBranch = await getDefaultBranch(githubRepo, installation.token);
   } catch {
     await interaction.reply({
-      content: installation
-        ? `Couldn't reach \`${githubRepo}\` on GitHub even with the GitHub App installed — check that the repo still exists.`
-        : `Couldn't reach \`${githubRepo}\` on GitHub. If it's private, install the GitHub App first, then try again: ${APP_INSTALL_URL}`,
+      content: `Couldn't reach \`${githubRepo}\` on GitHub even with the GitHub App installed — check that the repo still exists.`,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -76,25 +91,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     await db.execute({
-      sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, webhook_secret, team_lead)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        interaction.channelId,
-        interaction.guildId,
-        title,
-        githubRepo,
-        defaultBranch,
-        encrypt(webhookSecret),
-        interaction.user.id,
-      ],
+      sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, team_lead)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [interaction.channelId, interaction.guildId, title, githubRepo, defaultBranch, interaction.user.id],
     });
   } catch (error) {
-    // The partial unique index on projects(channel_id) WHERE status = 'active' is the
-    // real guard against a second active project in the same channel; this catch just
-    // turns that DB-level rejection into a friendly reply instead of a raw 500.
+    // The two partial unique indexes (one active project per channel, one per
+    // repo) are the real guard — the checks above are just for a friendly
+    // reply on the common path; this catches the rare race between them.
     if (error instanceof LibsqlError && error.extendedCode === "SQLITE_CONSTRAINT_UNIQUE") {
       await interaction.reply({
-        content: `This channel already has an active project. Run \`/project end\` first.`,
+        content: "Couldn't start the project — this channel or repo just became linked to another active project.",
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -103,34 +110,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   await interaction.reply(
-    `Started project **${title}**, linked to \`${githubRepo}\`. This channel's board is now active.`,
+    [
+      `Started project **${title}**, linked to \`${githubRepo}\`. This channel's board is now active.`,
+      "Push and pull-request events are wired up automatically through the installed GitHub App.",
+    ].join("\n"),
   );
 
   const project = await getActiveProject(interaction.channelId);
   if (project) {
     await updateBoard(interaction.client, project);
   }
-
-  const webhookPath = `/webhooks/github/${project?.public_id ?? "?"}`;
-  const payloadUrl = env.PUBLIC_BASE_URL ? `${env.PUBLIC_BASE_URL}${webhookPath}` : webhookPath;
-  const payloadUrlNote = env.PUBLIC_BASE_URL ? "" : " (prepend your host — `PUBLIC_BASE_URL` isn't set)";
-
-  // Ephemeral + separate from the announcement above: this secret lets anyone forge
-  // webhook payloads if it leaks, so only the team lead who ran the command should see it.
-  await interaction.followUp({
-    content: [
-      "**GitHub webhook setup** (only you can see this — save the secret now, it won't be shown again):",
-      `- Payload URL: \`${payloadUrl}\`${payloadUrlNote}`,
-      "- Content type: `application/json`",
-      `- Secret: \`${webhookSecret}\``,
-      '- Events: `push` and `pull_request` (select individual events, not "Send me everything")',
-      "",
-      "Add this under the repo's **Settings → Webhooks → Add webhook**.",
-      "",
-      installation
-        ? "Drift checks are authenticated via the installed GitHub App, so private repos work too."
-        : `Drift checks call the GitHub API unauthenticated, so \`${githubRepo}\` needs to stay a **public** repo — or install the GitHub App for private-repo support: ${APP_INSTALL_URL}`,
-    ].join("\n"),
-    flags: MessageFlags.Ephemeral,
-  });
 }
