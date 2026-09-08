@@ -9,7 +9,6 @@ export interface Project {
   title: string;
   github_repo: string;
   default_branch: string;
-  webhook_secret: string;
   status: ProjectStatus;
   created_at: number;
   start_time: number | null;

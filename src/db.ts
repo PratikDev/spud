@@ -23,7 +23,6 @@ await db.execute(`
     title TEXT NOT NULL,
     github_repo TEXT NOT NULL,
     default_branch TEXT NOT NULL,
-    webhook_secret TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('active', 'ended')) DEFAULT 'active',
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     start_time INTEGER,
@@ -40,6 +39,15 @@ await db.execute(`
 await db.execute(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_active_per_channel
   ON projects (channel_id)
+  WHERE status = 'active';
+`);
+
+// enforces "a repo can only be linked to one active project at a time" — the
+// GitHub App's webhook is repo-scoped, not project-scoped, so this is also
+// what lets it resolve a delivery to exactly one project.
+await db.execute(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_active_per_repo
+  ON projects (github_repo)
   WHERE status = 'active';
 `);
 
@@ -68,15 +76,16 @@ export async function getActiveProject(channelId: string): Promise<Project | nul
   return project;
 }
 
-// Used by the GitHub webhook handler, which only has {public_id} from the URL —
-// it may be looking up an ended project too (see the "ended projects still get
-// stray webhook traffic" case), so this doesn't filter by status like the one above.
-// public_id (not the internal auto-increment id) is used here since it's exposed
-// in the webhook payload URL and shouldn't reveal a guessable sequential number.
-export async function getProjectByPublicId(publicId: string): Promise<Project | null> {
-  const rs = await db.execute({ sql: "SELECT * FROM projects WHERE public_id = ?", args: [publicId] });
+// Used by the GitHub App's webhook handler, which resolves a delivery to a
+// project by the payload's repository full name rather than a URL param —
+// there's only ever one active project per repo (see idx_projects_active_per_repo).
+export async function getActiveProjectByRepo(githubRepo: string): Promise<Project | null> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM projects WHERE github_repo = ? AND status = 'active'",
+    args: [githubRepo],
+  });
   const project = (rs.rows[0] as unknown as Project | undefined) ?? null;
-  log.debug(project ? "Found project by public id" : "No project found by public id", { publicId });
+  log.debug(project ? "Found active project by repo" : "No active project for repo", { githubRepo });
   return project;
 }
 
