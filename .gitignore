@@ -36,6 +36,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # local planning notes, not part of the project itself
 notes
 
+# GitHub App credentials — never commit the private key
+*.pem
+github.txt
+
 # IntelliJ based IDEs
 .idea
 
