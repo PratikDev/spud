@@ -99,6 +99,14 @@ describe("static routes", () => {
       const privacy = await fetch(`http://localhost:${server.port}/privacy`);
       expect(privacy.status).toBe(200);
       expect(await privacy.text()).toContain("Privacy Policy");
+
+      const styles = await fetch(`http://localhost:${server.port}/styles.css`);
+      expect(styles.status).toBe(200);
+      expect(styles.headers.get("content-type")).toContain("text/css");
+
+      const logo = await fetch(`http://localhost:${server.port}/spud-logo.png`);
+      expect(logo.status).toBe(200);
+      expect(logo.headers.get("content-type")).toContain("image/png");
     } finally {
       await server.stop();
     }
