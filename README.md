@@ -115,6 +115,19 @@ Spud enforces one rate limit itself; the other two are the third-party APIs' own
 | [GitHub REST API](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api), per installation | 5,000–12,500 requests/hour, scales with repo/user count | Outbound call fails; that push's drift check is skipped |
 | [Gemini API](https://ai.google.dev/gemini-api/docs/rate-limits), per project's own key | Depends on the key's tier/plan — free tier is roughly 15 requests/minute for `gemini-3.1-flash-lite` | Outbound call fails; that overlap/drift check is skipped |
 
+**Requests per trigger** — how many outbound calls each one actually makes:
+
+| Trigger | GitHub requests | Gemini requests |
+|---|---|---|
+| `/project start` | 3 (installation lookup, mint token, fetch repo) — just 1 if the App isn't installed | 0 |
+| `push` webhook, drift check runs | 3 (installation lookup, mint token, compare branches) | 1 |
+| `push` webhook, drift check skipped | 0 | 0 |
+| `pull_request` webhook (merge) | 0 | 0 |
+| `/claim`, new task | 0 | 1 |
+| `/claim`, matches an existing task | 0 | 0 |
+
+A push only runs the drift check at all when its branch isn't the default branch, a currently-claimed task matches that branch, and the project has a Gemini key set — any other push is a no-op with zero outbound calls.
+
 ## Tech stack
 
 | Concern | Choice |
