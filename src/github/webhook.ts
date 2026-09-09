@@ -206,7 +206,7 @@ export async function handleWebhookRequest(req: Bun.BunRequest<"/webhooks/github
 
 const landingPageFile = Bun.file(new URL("../../public/index.html", import.meta.url));
 const landingStylesFile = Bun.file(new URL("../../public/styles.css", import.meta.url));
-const landingLogoFile = Bun.file(new URL("../../assets/spud-logo.png", import.meta.url));
+const landingLogoFile = Bun.file(new URL("../../public/spud-logo.png", import.meta.url));
 const termsFile = Bun.file(new URL("../../legal/terms.html", import.meta.url));
 const privacyFile = Bun.file(new URL("../../legal/privacy.html", import.meta.url));
 
