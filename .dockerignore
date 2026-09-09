@@ -17,5 +17,4 @@ helm-charts
 .editorconfig
 .idea
 coverage*
-assets
 *.log
