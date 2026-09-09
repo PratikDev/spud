@@ -1,4 +1,4 @@
-import { MessageFlags, SlashCommandBuilder } from "discord.js";
+import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from "discord.js";
 
 import type { Command } from "@/discord/commands";
 import { env } from "@/env";
@@ -7,20 +7,25 @@ export const help: Command = {
   data: new SlashCommandBuilder().setName("help").setDescription("Show what Spud can do and where to find more info"),
 
   async execute(interaction) {
-    const landingUrl = env.PUBLIC_BASE_URL ?? "(set PUBLIC_BASE_URL to show a link here)";
+    const lines = [
+      "**Spud** — hackathon task coordination for your team.",
+      "",
+      "**Project**",
+      "`/project start` · `/project configure` · `/project end` · `/project status` · `/project list` · `/project set-gemini-key`",
+      "",
+      "**Tasks**",
+      "`/claim` · `/tasks` · `/done` · `/free` · `/delete`",
+    ];
+
+    // Only shown when there's actually somewhere to send people — and only an
+    // embed (not plain message content) renders `[text](url)` as a real link
+    // on Discord, so this reply is an embed rather than plain content.
+    if (env.PUBLIC_BASE_URL) {
+      lines.push("", `More info in [here](${env.PUBLIC_BASE_URL})`);
+    }
 
     await interaction.reply({
-      content: [
-        "**Spud** — hackathon task coordination for your team.",
-        "",
-        "**Project**",
-        "`/project start` · `/project configure` · `/project end` · `/project status` · `/project list` · `/project set-gemini-key`",
-        "",
-        "**Tasks**",
-        "`/claim` · `/tasks` · `/done` · `/free` · `/delete`",
-        "",
-        `More info, Terms of Service, and Privacy Policy: ${landingUrl}`,
-      ].join("\n"),
+      embeds: [new EmbedBuilder().setDescription(lines.join("\n"))],
       flags: MessageFlags.Ephemeral,
     });
   },
