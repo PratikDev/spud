@@ -52,6 +52,17 @@
     border-bottom: 1px solid transparent;
   }
   a:hover { border-bottom-color: #e3a857; }
+  .cta {
+    display: inline-block;
+    margin: 0 0 2.5rem;
+    padding: 0.65rem 1.5rem;
+    background: #e3a857;
+    color: #2b2118;
+    font-weight: 600;
+    border-radius: 6px;
+    border-bottom: none;
+  }
+  .cta:hover { opacity: 0.9; border-bottom: none; }
 </style>
 </head>
 <body>
@@ -59,6 +70,8 @@
 <main>
   <h1>Spud</h1>
   <p class="tagline">A Discord bot for hackathon task coordination — a live claim board, duplicate-claim detection, and nudges when a branch drifts outside the task it was claimed for.</p>
+
+  <a class="cta" href="https://discord.com/oauth2/authorize?client_id=1528332173378326671&permissions=10240&scope=bot%20applications.commands" target="_blank" rel="noopener">Add Spud to your server</a>
 
   <ul>
     <li>Live claim board per channel</li>
