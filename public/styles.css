@@ -344,6 +344,71 @@ h2 {
   font-weight: 600;
 }
 
+/* ---------- get started ---------- */
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 560px;
+}
+
+.steps li {
+  display: flex;
+  gap: 1.5rem;
+  position: relative;
+  padding-bottom: 2.25rem;
+}
+
+.steps li:last-child {
+  padding-bottom: 0;
+}
+
+.steps li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 42px;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+.step-num {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--gold-dim);
+  background: var(--surface);
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.steps h3 {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--text);
+  margin: 0 0 0.4rem;
+}
+
+.steps p {
+  margin: 0;
+  font-size: 0.96rem;
+  color: var(--text-mute);
+}
+
+.steps code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  color: var(--gold-bright);
+}
+
 /* ---------- trust strip ---------- */
 
 .trust {
