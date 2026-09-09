@@ -4,88 +4,214 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Spud</title>
-<style>
-  body {
-    margin: 0;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem 1.25rem;
-    box-sizing: border-box;
-    background: #2b2118;
-    color: #f2e9dc;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-  main { max-width: 480px; text-align: center; }
-  h1 {
-    margin: 0 0 0.5rem;
-    font-size: 2.5rem;
-    color: #e3a857;
-  }
-  p.tagline {
-    margin: 0 0 2rem;
-    line-height: 1.6;
-    color: #d8cdbc;
-  }
-  ul {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 2.5rem;
-    text-align: left;
-    line-height: 1.8;
-  }
-  ul li::before {
-    content: "•";
-    color: #e3a857;
-    margin-right: 0.6rem;
-  }
-  .links {
-    display: flex;
-    justify-content: center;
-    gap: 1.25rem;
-    flex-wrap: wrap;
-  }
-  a {
-    color: #e3a857;
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-  }
-  a:hover { border-bottom-color: #e3a857; }
-  .cta {
-    display: inline-block;
-    margin: 0 0 2.5rem;
-    padding: 0.65rem 1.5rem;
-    background: #e3a857;
-    color: #2b2118;
-    font-weight: 600;
-    border-radius: 6px;
-    border-bottom: none;
-  }
-  .cta:hover { opacity: 0.9; border-bottom: none; }
-</style>
+<meta name="description" content="Spud is a Discord bot that turns a channel into a live task board for small teams — and watches your GitHub repo to keep everyone honest." />
+<link rel="icon" href="/spud-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
 
-<main>
-  <h1>Spud</h1>
-  <p class="tagline">A Discord bot for small team task coordination — a live claim board, duplicate-claim detection, and nudges when a branch drifts outside the task it was claimed for.</p>
-
-  <a class="cta" href="https://discord.com/oauth2/authorize?client_id=1528332173378326671&permissions=10240&scope=bot%20applications.commands" target="_blank" rel="noopener">Add Spud to your server</a>
-
-  <ul>
-    <li>Live claim board per channel</li>
-    <li>Catches two people building the same thing</li>
-    <li>Flags scope drift straight from GitHub pushes</li>
-  </ul>
-
-  <div class="links">
+<header class="site-header container">
+  <a class="brand" href="/">
+    <img src="/spud-logo.png" alt="" />
+    <span>SPUD</span>
+  </a>
+  <nav class="site-nav">
+    <a href="#features">Features</a>
     <a href="https://github.com/pratikdev/spud" target="_blank" rel="noopener">GitHub</a>
-    <a href="https://discord.gg/7d7xxpJaf" target="_blank" rel="noopener">Support server</a>
-    <a href="/terms">Terms of Service</a>
-    <a href="/privacy">Privacy Policy</a>
-  </div>
+  </nav>
+</header>
+
+<main>
+  <section class="hero container">
+    <img class="mark" src="/spud-logo.png" alt="Spud logo — a potato with a leafy sprout" />
+    <h1>Turn a Discord channel into a <span class="accent">live task board</span></h1>
+    <p class="lead">
+      A Discord bot for small teams that shows who's working on what — and catches
+      duplicate work and scope drift before code review.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://discord.com/oauth2/authorize?client_id=1528332173378326671&permissions=10240&scope=bot%20applications.commands" target="_blank" rel="noopener">Add Spud to your server</a>
+      <a class="btn btn-ghost" href="https://github.com/pratikdev/spud" target="_blank" rel="noopener">View the source</a>
+    </div>
+    <p class="fineprint">Free · opt-in AI on your own key · no dashboard to remember to check</p>
+  </section>
+
+  <section class="problem container">
+    <p class="eyebrow">Why it exists</p>
+    <h2>Discord has no idea what anyone is working on</h2>
+    <p class="section-intro">
+      This started as a hackathon problem, not a SaaS idea. Same three failure modes, every time:
+    </p>
+    <div class="problem-grid">
+      <div>
+        <h3>Duplicate work</h3>
+        <p>Two people both start on "auth" under slightly different names. Nobody notices until both PRs are half-done and one gets thrown away.</p>
+      </div>
+      <div>
+        <h3>Invisible scope creep</h3>
+        <p>Someone claims "fix the login bug" and quietly rewrites half the schema. You find out at review, when it's expensive to unwind.</p>
+      </div>
+      <div>
+        <h3>No live picture</h3>
+        <p>The only way to know what's done, claimed, or up for grabs is to ask in chat. That works for five minutes, then nobody bothers.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="features container" id="features">
+    <p class="eyebrow">What it does</p>
+    <h2>A small number of things, done automatically and correctly</h2>
+    <p class="section-intro">
+      Not a smaller Jira. It does these deliberately, instead of fifty things that need a human to maintain.
+    </p>
+
+    <div class="feature-grid">
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="5" height="16" rx="1" />
+          <rect x="9.5" y="4" width="5" height="11" rx="1" />
+          <rect x="16" y="4" width="5" height="7" rx="1" />
+        </svg>
+        <h3>Live claim board</h3>
+        <p>A pinned, always-current board in the channel — up for grabs, in progress, done. <span class="why">The team never has to ask "is anyone doing X?" — and it updates itself.</span></p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="4" y="4" width="12" height="12" rx="1.5" />
+          <rect x="8" y="8" width="12" height="12" rx="1.5" />
+        </svg>
+        <h3>Duplicate-claim detection</h3>
+        <p>A new task is checked against everything already claimed; a likely repeat is rejected with a pointer to the existing owner. <span class="why">Catches wasted work in the ten seconds it takes to claim, not the hours later when two PRs collide.</span></p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="6" cy="6" r="2.5" />
+          <circle cx="6" cy="18" r="2.5" />
+          <circle cx="18" cy="9" r="2.5" />
+          <path d="M6 8.5v7M6 15c0-4 2-6 9.5-6" />
+        </svg>
+        <h3>Deterministic branch naming</h3>
+        <p>Every claimed task gets a consistent <code>type/kebab-case-slug</code> from its description — same description, same name. <span class="why">No bikeshedding, no inconsistent conventions across a fast-moving team.</span></p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+          <circle cx="12" cy="12" r="2.5" />
+        </svg>
+        <h3>Scope-drift nudges</h3>
+        <p>Every push to a claimed branch is compared against what was claimed. If the diff drifts noticeably, the bot nudges — by name, in the channel. <span class="why">Course-correct while it's still cheap, without anyone self-policing. Biased against false alarms.</span></p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8 12.5l2.5 2.5L16 9.5" />
+        </svg>
+        <h3>Auto-close on merge</h3>
+        <p>The moment a claimed branch's PR merges, its task is marked done and the board updates. <span class="why">The board never goes stale — it's driven by what happened in GitHub, not by someone's memory.</span></p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+        </svg>
+        <h3>One owner, nothing to babysit</h3>
+        <p>Whoever starts a project owns it — no admin override, no roles to configure. The board runs on GitHub events, so nothing needs updating by hand. <span class="why">One obvious person to ask, and less bookkeeping than the group chat you already have.</span></p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="8" cy="8" r="4" />
+          <path d="M11 11l8 8M16 16l2-2M18.5 18.5l1.5-1.5" />
+        </svg>
+        <h3>Bring-your-own AI key, encrypted</h3>
+        <p>AI features run on a Gemini key the <em>team</em> supplies — stored encrypted, decrypted only at use, never logged. <span class="why">Your data's relationship with the AI provider is yours, not something Spud sits in the middle of.</span></p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+        <h3>Real GitHub App integration</h3>
+        <p>A registered GitHub App with minimal read-only permissions — contents, metadata, pull requests. No stored OAuth tokens, no guessing at public repos. <span class="why">The correct way to integrate with GitHub, identical for public and private repos.</span></p>
+      </article>
+    </div>
+  </section>
+
+  <section class="not container">
+    <p class="eyebrow">What it's not</p>
+    <h2>Confident about a narrow scope</h2>
+    <ul class="not-list">
+      <li><span><strong>Not a Jira / Linear / Trello replacement.</strong> No sprints, epics, custom workflows, or reporting dashboards.</span></li>
+      <li><span><strong>Not a general project-management tool.</strong> One job — task coordination tied to a GitHub repo — without asking anyone to leave Discord.</span></li>
+      <li><span><strong>Not a chatbot you converse with.</strong> The AI runs quietly on two specific judgment calls; there's no chat interface to Spud itself.</span></li>
+      <li><span><strong>Not trying to lock anyone in.</strong> Ending a project archives its data rather than holding it hostage. No paid tier gates the basics.</span></li>
+    </ul>
+  </section>
+
+  <section class="trust container">
+    <p class="eyebrow">Built properly</p>
+    <ul>
+      <li>Live in production today</li>
+      <li>Discord developer-verified</li>
+      <li>Secrets encrypted at rest</li>
+      <li>Free &amp; independently run</li>
+    </ul>
+  </section>
+
+  <section class="final-cta container">
+    <div class="panel">
+      <h2>Add Spud to your server</h2>
+      <p>One invite link. Zero setup, no new login, no dashboard to remember to check.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://discord.com/oauth2/authorize?client_id=1528332173378326671&permissions=10240&scope=bot%20applications.commands" target="_blank" rel="noopener">Add Spud to your server</a>
+        <a class="btn btn-ghost" href="https://discord.com/users/923964089758285834" target="_blank" rel="noopener">Questions? DM @manazo</a>
+      </div>
+    </div>
+  </section>
 </main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-top">
+      <a class="brand" href="/">
+        <img src="/spud-logo.png" alt="" />
+        <span>SPUD</span>
+      </a>
+      <div class="footer-social">
+        <a href="https://github.com/pratikdev/spud" target="_blank" rel="noopener" aria-label="Spud source on GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 .5C5.37.5 0 5.78 0 12.29c0 5.2 3.44 9.6 8.21 11.16.6.11.82-.25.82-.56 0-.28-.01-1.02-.02-2-3.34.71-4.04-1.58-4.04-1.58-.55-1.36-1.33-1.73-1.33-1.73-1.09-.73.08-.71.08-.71 1.2.08 1.84 1.21 1.84 1.21 1.07 1.8 2.81 1.28 3.5.98.11-.76.42-1.28.76-1.58-2.67-.3-5.47-1.31-5.47-5.83 0-1.29.47-2.34 1.24-3.17-.12-.3-.54-1.5.12-3.14 0 0 1.01-.32 3.3 1.21a11.6 11.6 0 0 1 3-.4c1.02 0 2.05.14 3 .4 2.29-1.53 3.3-1.21 3.3-1.21.66 1.64.24 2.84.12 3.14.77.83 1.24 1.88 1.24 3.17 0 4.53-2.81 5.53-5.49 5.82.43.37.81 1.1.81 2.22 0 1.6-.01 2.9-.01 3.29 0 .32.22.69.83.57C20.56 21.88 24 17.48 24 12.29 24 5.78 18.63.5 12 .5Z" />
+          </svg>
+        </a>
+        <a href="https://discord.com/users/923964089758285834" target="_blank" rel="noopener" aria-label="DM @manazo on Discord">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M20.317 4.369A19.79 19.79 0 0 0 16.558 3c-.2.36-.43.85-.586 1.235a18.27 18.27 0 0 0-3.944 0A9.03 9.03 0 0 0 11.44 3a19.74 19.74 0 0 0-3.76 1.369C3.94 8.02 3.23 11.579 3.586 15.088a19.9 19.9 0 0 0 5.993 3.03c.485-.66.918-1.36 1.29-2.096a12.86 12.86 0 0 1-2.03-.973c.17-.125.337-.256.497-.39a14.2 14.2 0 0 0 12.087 0c.162.14.328.27.497.39-.648.383-1.33.71-2.033.974.373.735.804 1.435 1.29 2.095a19.84 19.84 0 0 0 5.996-3.03c.42-4.065-.719-7.593-3.01-10.72ZM9.68 13.037c-1.183 0-2.157-1.085-2.157-2.42 0-1.334.955-2.42 2.157-2.42 1.21 0 2.176 1.096 2.157 2.42 0 1.335-.955 2.42-2.157 2.42Zm4.64 0c-1.183 0-2.157-1.085-2.157-2.42 0-1.334.955-2.42 2.157-2.42 1.21 0 2.176 1.096 2.157 2.42 0 1.335-.946 2.42-2.157 2.42Z" />
+          </svg>
+        </a>
+      </div>
+    </div>
+    <p class="note">
+      Spud — a potato. Unglamorous, low-key, reliable. A real, in-production tool built and
+      operated by one person because it was needed, not a demo.
+    </p>
+    <div class="footer-bottom">
+      <div class="footer-links">
+        <a href="/terms">Terms of Service</a>
+        <a href="/privacy">Privacy Policy</a>
+      </div>
+      <p class="copy">&copy; 2026 Spud</p>
+    </div>
+  </div>
+</footer>
 
 </body>
 </html>
