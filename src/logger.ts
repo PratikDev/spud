@@ -27,6 +27,8 @@ if (LOKI_ENABLED) {
       basicAuth: `${USER_ID}:${GRAFANA_CLOUD_TOKEN}`,
       labels: { service_name: "spud" },
       json: true,
+      format: winston.format.json(),
+      replaceTimestamp: true,
       onConnectionError: (error) => console.error("[logger] Loki connection error:", error),
     }),
   );
