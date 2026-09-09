@@ -29,7 +29,13 @@ A Discord bot for small team task coordination — a live claim board, duplicate
 
 `/done`, `/free`, and `/delete` only work for the task's owner or a server admin.
 
-**AI features (optional, highly recommended)** — Gemini-powered duplicate-claim detection, branch naming, and scope-drift nudges on pushes; this is what makes the bot actually useful. Off by default; each project supplies its own key via `/project set-gemini-key` (stored encrypted).
+**AI features (optional, highly recommended)** — Gemini-powered duplicate-claim detection, branch naming, and scope-drift nudges on pushes; this is what makes the bot actually useful. Off by default; each project supplies its own key via `/project set-gemini-key` (stored encrypted). Nothing errors without a key — each feature just falls back to something simpler:
+
+| Feature | With a Gemini key | Without a key |
+|---|---|---|
+| Duplicate-claim detection | Rejects a likely duplicate, naming the existing task/owner | Skipped — any new description is accepted |
+| Branch naming | `<type>/<kebab-slug>` (feature/fix/chore/docs/refactor) | Plain `task/<kebab-slug>`, no type guessing |
+| Scope-drift nudges | Diffs the push against the task, nudges if it's drifted | Skipped before the GitHub compare call even happens |
 
 **Auto-close on merge** — merging a claimed branch's PR marks its task done automatically.
 
