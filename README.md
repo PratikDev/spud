@@ -29,7 +29,7 @@ A Discord bot for small team task coordination — a live claim board, duplicate
 
 `/done`, `/free`, and `/delete` only work for the task's owner or a server admin.
 
-**AI features (optional)** — Gemini-powered duplicate-claim detection, branch naming, and scope-drift nudges on pushes. Off by default; each project supplies its own key via `/project set-gemini-key` (stored encrypted).
+**AI features (optional, highly recommended)** — Gemini-powered duplicate-claim detection, branch naming, and scope-drift nudges on pushes; this is what makes the bot actually useful. Off by default; each project supplies its own key via `/project set-gemini-key` (stored encrypted).
 
 **Auto-close on merge** — merging a claimed branch's PR marks its task done automatically.
 
@@ -125,7 +125,7 @@ sequenceDiagram
 - [Bun](https://bun.sh) installed
 - A Discord application + bot ([Developer Portal](https://discord.com/developers/applications)) — see below if you haven't made one
 - A GitHub App ([github.com/settings/apps](https://github.com/settings/apps)) — **required**, see [GitHub App](#github-app) above and setup below
-- Optional: a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey), set per-project via `/project set-gemini-key`
+- Recommended: a Gemini API key, set per-project via `/project set-gemini-key` — see [AI features](#features) above
 
 **1. Install dependencies**
 
