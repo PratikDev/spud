@@ -5,13 +5,13 @@ const log = createLogger("github/compare");
 const GITHUB_API = "https://api.github.com";
 const REQUEST_TIMEOUT_MS = 10_000;
 
-function authHeaders(token?: string): Record<string, string> | undefined {
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+function authHeaders(token: string): Record<string, string> {
+  return { Authorization: `Bearer ${token}` };
 }
 
 // `token` is a short-lived GitHub App installation token (see github/app-auth.ts)
-// — omit it for the unauthenticated, public-repos-only path.
-export async function getDefaultBranch(githubRepo: string, token?: string): Promise<string> {
+// — always required, both callers already have one by the time they get here.
+export async function getDefaultBranch(githubRepo: string, token: string): Promise<string> {
   const response = await fetch(`${GITHUB_API}/repos/${githubRepo}`, {
     headers: authHeaders(token),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -42,7 +42,7 @@ export async function compareBranches(
   repo: string,
   base: string,
   head: string,
-  token?: string,
+  token: string,
 ): Promise<ChangedFile[]> {
   const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/compare/${base}...${head}`, {
     headers: authHeaders(token),
