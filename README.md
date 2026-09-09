@@ -1,6 +1,6 @@
 # Spud
 
-A Discord bot for hackathon task coordination — a live claim board that shows who's working on what, catches two people building the same feature before it happens, and nudges someone if their branch quietly drifts outside the task they claimed.
+A Discord bot for small team task coordination — a live claim board that shows who's working on what, catches two people building the same feature before it happens, and nudges someone if their branch quietly drifts outside the task they claimed.
 
 **[Add Spud to your server](https://discord.com/oauth2/authorize?client_id=1528332173378326671&permissions=10240&scope=bot%20applications.commands)** — not listed in Discord's App Directory yet, but the invite link works the same either way. Run `/help` once it's in.
 
@@ -8,7 +8,7 @@ A Discord bot for hackathon task coordination — a live claim board that shows 
 
 ### Project Lifecycle
 
-A project is scoped to a **channel**, not the whole server, so one Discord server can host multiple concurrent hackathons/teams without collision. No task command works until someone starts one.
+A project is scoped to a **channel**, not the whole server, so one Discord server can host multiple concurrent projects/teams without collision. No task command works until someone starts one.
 
 | Command | Access | Description |
 |---|---|---|

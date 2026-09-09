@@ -22,7 +22,7 @@ const subcommandsExecute = {
 export const project: Command = {
   data: new SlashCommandBuilder()
     .setName("project")
-    .setDescription("Manage the hackathon project for this channel")
+    .setDescription("Manage the project for this channel")
     .addSubcommand(start.data)
     .addSubcommand(configure.data)
     .addSubcommand(end.data)

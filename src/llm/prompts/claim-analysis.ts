@@ -1,4 +1,4 @@
-export const CLAIM_ANALYSIS_SYSTEM_PROMPT = `You are analyzing a new task claim on a hackathon team's task board.
+export const CLAIM_ANALYSIS_SYSTEM_PROMPT = `You are analyzing a new task claim on a small team's task board.
 
 You will be given the new task's description and a list of task descriptions that
 are already claimed (in progress) on the same project. Return exactly two fields.

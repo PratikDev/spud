@@ -8,7 +8,7 @@ export const help: Command = {
 
   async execute(interaction) {
     const lines = [
-      "**Spud** — hackathon task coordination for your team.",
+      "**Spud** — small team task coordination.",
       "",
       "**Project**",
       "`/project start` · `/project configure` · `/project end` · `/project status` · `/project list` · `/project set-gemini-key`",

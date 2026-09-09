@@ -1,5 +1,5 @@
 export const DRIFT_SYSTEM_PROMPT = `You are checking whether a git branch's changes still match the task it was
-claimed for, on a hackathon team's task board.
+claimed for, on a small team's task board.
 
 You will be given the task description the branch was claimed under, and the
 list of files changed on that branch relative to the repo's default branch.

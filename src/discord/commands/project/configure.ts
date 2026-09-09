@@ -11,12 +11,10 @@ export function data(sub: SlashCommandSubcommandBuilder) {
     .setName("configure")
     .setDescription("Set or update this project's timeline and handbook")
     .addStringOption((opt) =>
-      opt
-        .setName("start-time")
-        .setDescription("When the hackathon officially starts, e.g. 'July 25 9am' or 'in 2 days'"),
+      opt.setName("start-time").setDescription("When the project officially starts, e.g. 'July 25 9am' or 'in 2 days'"),
     )
     .addStringOption((opt) =>
-      opt.setName("end-time").setDescription("When the hackathon officially ends, e.g. 'July 27 6pm'"),
+      opt.setName("end-time").setDescription("When the project officially ends, e.g. 'July 27 6pm'"),
     )
     .addAttachmentOption((opt) => opt.setName("handbook").setDescription("Handbook file for this project"));
 }
