@@ -139,25 +139,25 @@ bun install
 cp .env.example .env
 ```
 
-| Variable | Required | Notes |
-|---|---|---|
-| `DISCORD_TOKEN` | yes | Bot token (Developer Portal → Bot) |
-| `DISCORD_CLIENT_ID` | yes | Application ID (Developer Portal → General Information) |
-| `GEMINI_MODEL_NAME` | yes | e.g. `gemini-3.1-flash-lite` |
-| `ENCRYPTION_KEY` | yes | 32-byte key for encrypting stored Gemini keys — `openssl rand -base64 32` |
-| `GITHUB_APP_ID` | yes | From your GitHub App's settings page |
-| `GITHUB_APP_SLUG` | yes | From the App's URL: `github.com/apps/<slug>` |
-| `GITHUB_APP_PRIVATE_KEY` | yes | The App's private key `.pem`, quoted as-is in `.env` |
-| `GITHUB_APP_WEBHOOK_SECRET` | yes | Secret set on the App's Webhook settings page |
-| `PORT` | no | Defaults to `3000` |
-| `PUBLIC_BASE_URL` | no | Landing-page link shown in `/help` |
-| `TURSO_DATABASE_URL` | no | Turso DB URL — falls back to local SQLite if unset |
-| `TURSO_AUTH_TOKEN` | no | Must be a **database** token, not account-level |
-| `DATABASE_PATH` | no | Local SQLite path, defaults to `spud.sqlite` |
-| `LOG_LEVEL` | no | `debug`/`info`/`warn`/`error`, defaults to `info` |
-| `LOKI_HOST` | no | Grafana Cloud Loki URL — logs ship only if all three Loki vars are set |
-| `USER_ID` | no | Grafana Cloud Loki instance ID |
-| `GRAFANA_CLOUD_TOKEN` | no | Grafana Cloud API token |
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+| `DISCORD_TOKEN` | yes | — | Bot token (Developer Portal → Bot) |
+| `DISCORD_CLIENT_ID` | yes | — | Application ID (Developer Portal → General Information) |
+| `GEMINI_MODEL_NAME` | yes | — | e.g. `gemini-3.1-flash-lite` |
+| `ENCRYPTION_KEY` | yes | — | 32-byte key for encrypting stored Gemini keys — `openssl rand -base64 32` |
+| `GITHUB_APP_ID` | yes | — | From your GitHub App's settings page |
+| `GITHUB_APP_SLUG` | yes | — | From the App's URL: `github.com/apps/<slug>` |
+| `GITHUB_APP_PRIVATE_KEY` | yes | — | The App's private key `.pem`, quoted as-is in `.env` |
+| `GITHUB_APP_WEBHOOK_SECRET` | yes | — | Secret set on the App's Webhook settings page |
+| `PORT` | no | `3000` | Webhook server port |
+| `PUBLIC_BASE_URL` | no | — | Landing-page link shown in `/help` |
+| `TURSO_DATABASE_URL` | no | — | Falls back to local SQLite if unset |
+| `TURSO_AUTH_TOKEN` | no | — | Must be a **database** token, not account-level |
+| `DATABASE_PATH` | no | `spud.sqlite` | Local SQLite path, only used when `TURSO_DATABASE_URL` is unset |
+| `LOG_LEVEL` | no | `info` | `debug`/`info`/`warn`/`error` |
+| `LOKI_HOST` | no | — | Grafana Cloud Loki URL — logs ship only if all three Loki vars are set |
+| `USER_ID` | no | — | Grafana Cloud Loki instance ID |
+| `GRAFANA_CLOUD_TOKEN` | no | — | Grafana Cloud API token |
 
 **3. Create and invite the bot** (skip if you already have one)
 
