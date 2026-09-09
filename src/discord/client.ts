@@ -62,6 +62,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const durationMs = Math.round(performance.now() - startedAt);
       log.info("Executed command", {
         commandName: interaction.commandName,
+        // Not every command has subcommands (e.g. /claim) — false means
+        // "return null instead of throwing" rather than "required".
+        subcommand: interaction.options.getSubcommand(false),
         userId: interaction.user.id,
         durationMs,
       });
@@ -72,6 +75,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const durationMs = Math.round(performance.now() - startedAt);
     log.error("Error handling command", {
       commandName: interaction.commandName,
+      subcommand: interaction.isChatInputCommand() ? interaction.options.getSubcommand(false) : null,
       durationMs,
       error: String(error),
     });
