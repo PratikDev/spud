@@ -98,7 +98,7 @@ flowchart LR
     Discord <--> Spud["Spud\n(single Bun process)"]
     Spud <--> DB[("SQLite")]
     Spud <--> Gemini["Gemini"]
-    GitHub["GitHub App"] -->|push / pull_request webhook\n(one URL, every installed repo)| Spud
+    GitHub["GitHub App"] -->|"push / pull_request webhook\n(one URL, every installed repo)"| Spud
     Spud -->|JWT + installation token| GitHub
 ```
 
