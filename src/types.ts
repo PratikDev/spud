@@ -14,7 +14,7 @@ export interface Project {
   start_time: number | null;
   end_time: number | null;
   team_lead: string;
-  rulebook_message_id: string | null;
+  handbook_message_id: string | null;
   ended_at: number | null;
   board_message_id: string | null;
   gemini_api_key: string | null;

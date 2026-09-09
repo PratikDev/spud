@@ -9,7 +9,7 @@ import { parseWhen } from "@/utils/dates";
 export function data(sub: SlashCommandSubcommandBuilder) {
   return sub
     .setName("configure")
-    .setDescription("Set or update this project's timeline and rulebook")
+    .setDescription("Set or update this project's timeline and handbook")
     .addStringOption((opt) =>
       opt
         .setName("start-time")
@@ -18,7 +18,7 @@ export function data(sub: SlashCommandSubcommandBuilder) {
     .addStringOption((opt) =>
       opt.setName("end-time").setDescription("When the hackathon officially ends, e.g. 'July 27 6pm'"),
     )
-    .addAttachmentOption((opt) => opt.setName("rulebook").setDescription("Rulebook file for this hackathon"));
+    .addAttachmentOption((opt) => opt.setName("handbook").setDescription("Handbook file for this project"));
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -36,11 +36,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const startTimeText = interaction.options.getString("start-time");
   const endTimeText = interaction.options.getString("end-time");
-  const rulebook = interaction.options.getAttachment("rulebook");
+  const handbook = interaction.options.getAttachment("handbook");
 
-  if (!startTimeText && !endTimeText && !rulebook) {
+  if (!startTimeText && !endTimeText && !handbook) {
     await interaction.reply({
-      content: "Provide at least one of `start-time`, `end-time`, or `rulebook` to configure.",
+      content: "Provide at least one of `start-time`, `end-time`, or `handbook` to configure.",
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -85,13 +85,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // Re-post the file as a channel message rather than storing its CDN URL directly —
   // Discord's attachment URLs carry a signed expiry, but a message id can always be
   // re-fetched for a fresh one (or just jumped to from the client).
-  let rulebookMessageId = project.rulebook_message_id;
-  if (rulebook && interaction.channel?.isTextBased() && "send" in interaction.channel) {
+  let handbookMessageId = project.handbook_message_id;
+  if (handbook && interaction.channel?.isTextBased() && "send" in interaction.channel) {
     const message = await interaction.channel.send({
-      content: `📋 Rulebook updated by <@${interaction.user.id}>`,
-      files: [{ attachment: rulebook.url, name: rulebook.name }],
+      content: `📋 Handbook updated by <@${interaction.user.id}>`,
+      files: [{ attachment: handbook.url, name: handbook.name }],
     });
-    rulebookMessageId = message.id;
+    handbookMessageId = message.id;
   }
 
   const updates: string[] = [];
@@ -105,9 +105,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     updates.push("end_time = ?");
     params.push(endTime);
   }
-  if (rulebookMessageId !== project.rulebook_message_id) {
-    updates.push("rulebook_message_id = ?");
-    params.push(rulebookMessageId);
+  if (handbookMessageId !== project.handbook_message_id) {
+    updates.push("handbook_message_id = ?");
+    params.push(handbookMessageId);
   }
 
   params.push(project.id);
@@ -116,7 +116,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const summary: string[] = [];
   if (startTimeText) summary.push(`Start: <t:${startTime}:F>`);
   if (endTimeText) summary.push(`End: <t:${endTime}:F>`);
-  if (rulebook) summary.push(`Rulebook: uploaded`);
+  if (handbook) summary.push(`Handbook: uploaded`);
 
   await interaction.reply(summary.join("\n"));
 }

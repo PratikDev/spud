@@ -40,8 +40,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     project.start_time && project.end_time
       ? `<t:${project.start_time}:F> → <t:${project.end_time}:F>`
       : "_not set — run `/project configure`_";
-  const rulebook = project.rulebook_message_id
-    ? `https://discord.com/channels/${interaction.guildId}/${project.channel_id}/${project.rulebook_message_id}`
+  const handbook = project.handbook_message_id
+    ? `https://discord.com/channels/${interaction.guildId}/${project.channel_id}/${project.handbook_message_id}`
     : "_not uploaded_";
 
   await interaction.reply(
@@ -50,7 +50,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       `Unclaimed: ${countFor("unclaimed")} · Claimed: ${countFor("claimed")} · Done: ${countFor("done")}`,
       `Team lead: <@${project.team_lead}>`,
       `Timeline: ${timeline}`,
-      `Rulebook: ${rulebook}`,
+      `Handbook: ${handbook}`,
     ].join("\n"),
   );
 }

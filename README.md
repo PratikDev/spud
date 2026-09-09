@@ -13,9 +13,9 @@ A project is scoped to a **channel**, not the whole server, so one Discord serve
 | Command | Access | Description |
 |---|---|---|
 | `/project start <title> <github-repo>` | Anyone | Starts a new active project in this channel, linking a GitHub repo the [GitHub App](#github-app-authentication) is already installed on. Whoever runs it becomes the project's **team lead** |
-| `/project configure [start-time] [end-time] [rulebook]` | Team lead only | Sets or updates the project's timeline (parsed from natural language via `chrono-node`, e.g. "July 25 9am") and rulebook file. Any subset of fields can be provided per call |
+| `/project configure [start-time] [end-time] [handbook]` | Team lead only | Sets or updates the project's timeline (parsed from natural language via `chrono-node`, e.g. "July 25 9am") and handbook file. Any subset of fields can be provided per call |
 | `/project end` | Team lead only | Ends the active project, archives (doesn't delete) its board/task data, unpins the board |
-| `/project status` | Team lead only | Shows the active project's title, repo, task counts, timeline, and rulebook link |
+| `/project status` | Team lead only | Shows the active project's title, repo, task counts, timeline, and handbook link |
 | `/project list` | Server admin | Lists all active projects across the server (bird's-eye view, ephemeral) |
 | `/project set-gemini-key` | Team lead only | Opens a modal to set or remove this project's own Gemini API key, enabling/disabling AI features |
 
@@ -23,7 +23,7 @@ A project is scoped to a **channel**, not the whole server, so one Discord serve
 
 Team lead has no reassignment path yet — if the team lead leaves the server, `/project configure`/`end`/`status` become permanently unusable for that project (no admin fallback, no migration tool to patch it).
 
-`/project start` only takes the bare minimum (title + repo); timeline and rulebook are set separately via `/project configure` since they might not be decided yet when the project is created. `/claim` refuses to run until both `start-time` and `end-time` are set. Timeline input is natural language (no timezone support — everything is parsed relative to the process's own local time), and the rulebook file is re-posted as a message in the project channel rather than storing the raw attachment URL, since Discord's CDN URLs carry a signed expiry but a message can always be re-fetched (or jumped to) for a fresh one.
+`/project start` only takes the bare minimum (title + repo); timeline and handbook are set separately via `/project configure` since they might not be decided yet when the project is created. `/claim` refuses to run until both `start-time` and `end-time` are set. Timeline input is natural language (no timezone support — everything is parsed relative to the process's own local time), and the handbook file is re-posted as a message in the project channel rather than storing the raw attachment URL, since Discord's CDN URLs carry a signed expiry but a message can always be re-fetched (or jumped to) for a fresh one.
 
 ### Claim Board
 

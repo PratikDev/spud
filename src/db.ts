@@ -28,7 +28,7 @@ await db.execute(`
     start_time INTEGER,
     end_time INTEGER,
     team_lead TEXT NOT NULL,
-    rulebook_message_id TEXT,
+    handbook_message_id TEXT,
     ended_at INTEGER,
     board_message_id TEXT,
     gemini_api_key TEXT
