@@ -105,6 +105,16 @@ sequenceDiagram
     end
 ```
 
+## Rate limits
+
+Spud enforces one rate limit itself; the other two are the third-party APIs' own limits on Spud's outbound calls, not something Spud controls.
+
+| Scope | Limit | Behavior when exceeded |
+|---|---|---|
+| GitHub webhook, per project (enforced by Spud) | 20-request burst, refills 1 every 3s | Returns `429` until it refills |
+| [GitHub REST API](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api), per installation | 5,000–12,500 requests/hour, scales with repo/user count | Outbound call fails; that push's drift check is skipped |
+| [Gemini API](https://ai.google.dev/gemini-api/docs/rate-limits), per project's own key | Depends on the key's tier/plan — free tier is roughly 15 requests/minute for `gemini-3.1-flash-lite` | Outbound call fails; that overlap/drift check is skipped |
+
 ## Tech stack
 
 | Concern | Choice |
