@@ -45,3 +45,4 @@ github.txt
 
 # Finder (MacOS) folder config
 .DS_Store
+.vercel
