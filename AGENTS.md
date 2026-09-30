@@ -29,6 +29,7 @@ Keep commits atomic:
 - PRs should explain user-visible impact, list schema or config changes, and link related issues. Pull requests should include a short summary, validation steps, and linked issues when relevant. Note any schema, environment, or migration impact explicitly.
 - Do not commit any changes unless you're asked to.
 - Commit messages shouldn't be too long. It should be short and straight to the point. Use imperative mood and present tense. For example, "Add feature" instead of "Added feature" or "Adding feature". Avoid vague messages like "fix", "update", or "refactor". Instead, describe what was changed and why. For example, "Fix bug in user authentication" or "Refactor code for better readability".
+- Never put all changes in a single giant commit. Break down changes into smaller, logical commits that are easier to review and understand.
 - Pull request comments should always be in casual tone, never include unnecessary descriptions or details, and should be include proper file references.
 
 ## Security & Configuration Tips
