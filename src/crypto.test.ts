@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { decrypt, encrypt } from "@/crypto";
+import { decrypt, encrypt } from "../src/crypto";
 
 describe("encrypt/decrypt", () => {
   test("round-trips a plaintext value", () => {

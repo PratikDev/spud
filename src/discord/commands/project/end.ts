@@ -1,10 +1,10 @@
 import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import { MessageFlags } from "discord.js";
 
-import { db, getActiveProject } from "@/db";
-import { isTeamLead } from "@/discord/authorization";
-import { unpinBoard } from "@/discord/board";
-import { NO_ACTIVE_PROJECT, NOT_TEAM_LEAD } from "@/discord/commands/constants";
+import { db, getActiveProject } from "../../../db";
+import { isTeamLead } from "../../../discord/authorization";
+import { unpinBoard } from "../../../discord/board";
+import { NO_ACTIVE_PROJECT, NOT_TEAM_LEAD } from "../../../discord/commands/constants";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
   return sub.setName("end").setDescription("End the active project in this channel (archives its data)");

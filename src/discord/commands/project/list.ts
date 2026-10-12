@@ -1,10 +1,10 @@
 import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import { MessageFlags } from "discord.js";
 
-import { db } from "@/db";
-import { isServerAdmin } from "@/discord/authorization";
-import { NOT_ADMIN } from "@/discord/commands/constants";
-import type { Project } from "@/types";
+import { db } from "../../../db";
+import { isServerAdmin } from "../../../discord/authorization";
+import { NOT_ADMIN } from "../../../discord/commands/constants";
+import type { Project } from "../../../types";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
   return sub.setName("list").setDescription("List all active projects across the server");

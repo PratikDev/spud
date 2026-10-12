@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
-import { env } from "@/env";
-import { createLogger } from "@/logger";
+import { env } from "../src/env";
+import { createLogger } from "../src/logger";
 
 const log = createLogger("crypto");
 

@@ -1,9 +1,9 @@
 import type { AutocompleteInteraction } from "discord.js";
 
-import { getActiveProject } from "@/db";
-import { createLogger } from "@/logger";
-import { getTasksForProject, listTasksByStatus } from "@/tasks";
-import type { TaskStatus } from "@/types";
+import { getActiveProject } from "../db";
+import { createLogger } from "../logger";
+import { getTasksForProject, listTasksByStatus } from "../tasks";
+import type { TaskStatus } from "../types";
 
 const log = createLogger("discord/autocomplete");
 

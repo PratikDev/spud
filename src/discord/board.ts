@@ -1,10 +1,10 @@
 import type { Client } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 
-import { db } from "@/db";
-import { createLogger } from "@/logger";
-import { getTasksForProject } from "@/tasks";
-import type { Project, Task } from "@/types";
+import { db } from "../db";
+import { createLogger } from "../logger";
+import { getTasksForProject } from "../tasks";
+import type { Project, Task } from "../types";
 
 const log = createLogger("discord/board");
 

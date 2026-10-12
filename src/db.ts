@@ -1,8 +1,8 @@
 import { createClient } from "@libsql/client";
 
-import { env } from "@/env";
-import { createLogger } from "@/logger";
-import type { Project } from "@/types";
+import { env } from "../src/env";
+import { createLogger } from "../src/logger";
+import type { Project } from "../src/types";
 
 const log = createLogger("db");
 

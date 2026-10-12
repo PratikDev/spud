@@ -1,8 +1,8 @@
 import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 
-import { endActiveProjectsForGuild } from "@/db";
-import { env } from "@/env";
-import { createLogger } from "@/logger";
+import { endActiveProjectsForGuild } from "../db";
+import { env } from "../env";
+import { createLogger } from "../logger";
 import { commands } from "./commands";
 import { handleModalSubmit, MODAL_CUSTOM_ID_PREFIX } from "./commands/project/set-gemini-key";
 
@@ -38,9 +38,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       log.error("Error handling modal submit", { customId: interaction.customId, error: String(error) });
       const reply = { content: "Something went wrong saving that.", flags: MessageFlags.Ephemeral } as const;
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(reply).catch(() => {});
+        await interaction.followUp(reply).catch(() => { });
       } else {
-        await interaction.reply(reply).catch(() => {});
+        await interaction.reply(reply).catch(() => { });
       }
     }
     return;
@@ -83,9 +83,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     const reply = { content: "Something went wrong running that command.", flags: MessageFlags.Ephemeral } as const;
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(reply).catch(() => {});
+      await interaction.followUp(reply).catch(() => { });
     } else {
-      await interaction.reply(reply).catch(() => {});
+      await interaction.reply(reply).catch(() => { });
     }
   }
 });

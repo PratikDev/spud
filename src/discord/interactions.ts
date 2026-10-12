@@ -22,10 +22,10 @@
 
 import { InteractionResponseType, InteractionType, verifyKey } from "discord-interactions";
 
-import { commands } from "@/discord/commands";
-import type { RawInteraction } from "@/discord/interaction-shim";
-import { createInteractionShim } from "@/discord/interaction-shim";
-import { createLogger } from "@/logger";
+import { commands } from "../discord/commands";
+import type { RawInteraction } from "../discord/interaction-shim";
+import { createInteractionShim } from "../discord/interaction-shim";
+import { createLogger } from "../logger";
 
 const log = createLogger("discord/interactions");
 

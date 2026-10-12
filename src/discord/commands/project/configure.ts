@@ -1,10 +1,10 @@
 import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import { MessageFlags } from "discord.js";
 
-import { db, getActiveProject } from "@/db";
-import { isTeamLead } from "@/discord/authorization";
-import { NO_ACTIVE_PROJECT, NOT_TEAM_LEAD } from "@/discord/commands/constants";
-import { parseWhen } from "@/utils/dates";
+import { db, getActiveProject } from "../../../db";
+import { isTeamLead } from "../../../discord/authorization";
+import { NO_ACTIVE_PROJECT, NOT_TEAM_LEAD } from "../../../discord/commands/constants";
+import { parseWhen } from "../../../utils/dates";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
   return sub

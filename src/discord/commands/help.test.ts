@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 
-import { help } from "@/discord/commands/help";
+import { help } from "../commands/help";
 
 describe("help", () => {
   test("replies ephemerally with a command overview", async () => {

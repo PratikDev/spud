@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 
-import type { Command } from "@/discord/commands";
+import type { Command } from "../../../discord/commands";
 import * as configure from "./configure";
 import * as end from "./end";
 import * as list from "./list";

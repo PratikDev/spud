@@ -1,8 +1,8 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from "discord.js";
 
-import type { Command } from "@/discord/commands";
-import { env } from "@/env";
-import { APP_INSTALL_URL } from "@/github/app-auth";
+import { env } from "../../env";
+import { APP_INSTALL_URL } from "../../github/app-auth";
+import type { Command } from "../commands";
 
 export const help: Command = {
   data: new SlashCommandBuilder().setName("help").setDescription("Show what Spud can do and where to find more info"),

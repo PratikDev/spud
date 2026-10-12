@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatInputCommandInteraction } from "discord.js";
 
-import { canManageTask, isSameOwner, isServerAdmin, isTeamLead } from "@/discord/authorization";
-import type { Project } from "@/types";
+import { canManageTask, isSameOwner, isServerAdmin, isTeamLead } from "../discord/authorization";
+import type { Project } from "../types";
 
 function fakeInteraction(userId: string, isAdmin: boolean): ChatInputCommandInteraction {
   return {

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { ModalSubmitInteraction } from "discord.js";
 
-import { decrypt } from "@/crypto";
-import { db } from "@/db";
-import { handleModalSubmit, MODAL_CUSTOM_ID_PREFIX } from "@/discord/commands/project/set-gemini-key";
+import { decrypt } from "../../../crypto";
+import { db } from "../../../db";
+import { handleModalSubmit, MODAL_CUSTOM_ID_PREFIX } from "../../../discord/commands/project/set-gemini-key";
 
 async function insertProject(channelId: string, guildId: string, teamLead: string): Promise<number> {
   const rs = await db.execute({

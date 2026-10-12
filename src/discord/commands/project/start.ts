@@ -3,10 +3,10 @@ import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from 
 import { MessageFlags } from "discord.js";
 import { z } from "zod";
 
-import { db, getActiveProject, getActiveProjectByRepo } from "@/db";
-import { updateBoard } from "@/discord/board";
-import { APP_INSTALL_URL, getInstallationToken } from "@/github/app-auth";
-import { getDefaultBranch } from "@/github/compare";
+import { db, getActiveProject, getActiveProjectByRepo } from "../../../db";
+import { updateBoard } from "../../../discord/board";
+import { APP_INSTALL_URL, getInstallationToken } from "../../../github/app-auth";
+import { getDefaultBranch } from "../../../github/compare";
 
 const inputSchema = z.object({
   title: z.string().trim().nonempty().max(200, "title must be 200 characters or fewer"),
