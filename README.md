@@ -15,7 +15,6 @@ A Discord bot for small team task coordination — a live claim board, duplicate
 | `/project end` | Team lead | Ends the project, archives its data, unpins the board |
 | `/project status` | Team lead | Shows title, repo, task counts, timeline, handbook link |
 | `/project list` | Admin | Lists all active projects in the server |
-| `/project set-gemini-key` | Team lead | Sets/removes this project's Gemini key |
 
 **Claim board** — a pinned, auto-updating board per channel: 🟢 up for grabs, 🔧 in progress, ✅ done.
 
@@ -29,9 +28,9 @@ A Discord bot for small team task coordination — a live claim board, duplicate
 
 `/done`, `/free`, and `/delete` only work for the task's owner or a server admin.
 
-**AI features (optional, highly recommended)** — Gemini-powered duplicate-claim detection, branch naming, and scope-drift nudges on pushes; this is what makes the bot actually useful. Off by default; each project supplies its own key via `/project set-gemini-key` (stored encrypted). Nothing errors without a key — each feature just falls back to something simpler:
+**AI features** — Gemini-powered duplicate-claim detection, branch naming, and scope-drift nudges on pushes; this is what makes the bot actually useful. Runs on Spud's own Gemini key (`GEMINI_API_KEY`), shared by every project. Nothing errors if a Gemini call fails — each feature just falls back to something simpler:
 
-| Feature | With a Gemini key | Without a key |
+| Feature | With AI | If the Gemini call fails |
 |---|---|---|
 | Duplicate-claim detection | Rejects a likely duplicate, naming the existing task/owner | Skipped — any new description is accepted |
 | Branch naming | `<type>/<kebab-slug>` (feature/fix/chore/docs/refactor) | Plain `task/<kebab-slug>`, no type guessing |
@@ -88,16 +87,12 @@ sequenceDiagram
                 alt no matching claimed task
                     HTTP-->>GH: 200 (no-op)
                 else task found
-                    alt no Gemini key configured for project
-                        HTTP-->>GH: 200 (drift check skipped, no compare call)
-                    else
-                        HTTP->>API: compare(cached default branch, branch)
-                        HTTP->>LLM: task description + changed files -> isDrifted?
-                        alt drifted
-                            HTTP->>Discord: nudge naming the unexpected files
-                        end
-                        HTTP-->>GH: 200
+                    HTTP->>API: compare(cached default branch, branch)
+                    HTTP->>LLM: task description + changed files -> isDrifted?
+                    alt drifted
+                        HTTP->>Discord: nudge naming the unexpected files
                     end
+                    HTTP-->>GH: 200
                 end
             else pull_request event (closed + merged)
                 HTTP->>DB: find claimed task by merged branch name
@@ -119,7 +114,7 @@ Spud enforces one rate limit itself; the other two are the third-party APIs' own
 |---|---|---|
 | GitHub webhook, per project (enforced by Spud) | 20-request burst, refills 1 every 3s | Returns `429` until it refills |
 | [GitHub REST API](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api), per installation | 5,000–12,500 requests/hour, scales with repo/user count | Outbound call fails; that push's drift check is skipped |
-| [Gemini API](https://ai.google.dev/gemini-api/docs/rate-limits), per project's own key | Depends on the key's tier/plan — free tier is roughly 15 requests/minute for `gemini-3.1-flash-lite` | Outbound call fails; that overlap/drift check is skipped |
+| [Gemini API](https://ai.google.dev/gemini-api/docs/rate-limits), one key shared by every project | Depends on the key's tier/plan — free tier is roughly 15 requests/minute for `gemini-3.1-flash-lite`, across all projects combined | Outbound call fails; that overlap/drift check is skipped |
 
 **Requests per trigger** — how many outbound calls each one actually makes:
 
@@ -132,7 +127,7 @@ Spud enforces one rate limit itself; the other two are the third-party APIs' own
 | `/claim`, new task | 0 | 1 |
 | `/claim`, matches an existing task | 0 | 0 |
 
-A push only runs the drift check at all when its branch isn't the default branch, a currently-claimed task matches that branch, and the project has a Gemini key set — any other push is a no-op with zero outbound calls.
+A push only runs the drift check at all when its branch isn't the default branch, and a currently-claimed task matches that branch — any other push is a no-op with zero outbound calls.
 
 ## Tech stack
 
@@ -154,7 +149,7 @@ A push only runs the drift check at all when its branch isn't the default branch
 - [Bun](https://bun.sh) installed
 - A Discord application + bot ([Developer Portal](https://discord.com/developers/applications)) — see below if you haven't made one
 - A GitHub App ([github.com/settings/apps](https://github.com/settings/apps)) — **required**, see [GitHub App](#github-app) above and setup below
-- Recommended: a Gemini API key, set per-project via `/project set-gemini-key` — see [AI features](#features) above
+- A Gemini API key (Spud's own, shared by every project), set as `GEMINI_API_KEY` — see [AI features](#features) above
 
 **1. Install dependencies**
 
@@ -173,7 +168,7 @@ cp .env.example .env
 | `DISCORD_TOKEN` | yes | — | Bot token (Developer Portal → Bot) |
 | `DISCORD_CLIENT_ID` | yes | — | Application ID (Developer Portal → General Information) |
 | `GEMINI_MODEL_NAME` | yes | — | e.g. `gemini-3.1-flash-lite` |
-| `ENCRYPTION_KEY` | yes | — | 32-byte key for encrypting stored Gemini keys — `openssl rand -base64 32` |
+| `GEMINI_API_KEY` | yes | — | Spud's own Gemini key, shared by every project |
 | `GITHUB_APP_ID` | yes | — | From your GitHub App's settings page |
 | `GITHUB_APP_SLUG` | yes | — | From the App's URL: `github.com/apps/<slug>` |
 | `GITHUB_APP_PRIVATE_KEY` | yes | — | The App's private key `.pem`, quoted as-is in `.env` |
@@ -240,4 +235,4 @@ Note: `.env` values must be unquoted for `--env-file` to parse them correctly.
 - Timeline input has no timezone support — always parsed as UTC+6 (Bangladesh time).
 - No team lead reassignment — if they leave the server, that project's admin commands stop working.
 - Default branch is cached at project start — renaming it later isn't picked up.
-- AI features are silently opt-in — no periodic reminder if no Gemini key is set.
+- All projects share one Gemini key and its quota — there's no per-project or per-server cap yet, so heavy use by one server can exhaust it for everyone (AI features then fall back to the non-AI behaviour).
