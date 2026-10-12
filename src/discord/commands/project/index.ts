@@ -4,7 +4,6 @@ import type { Command } from "@/discord/commands";
 import * as configure from "./configure";
 import * as end from "./end";
 import * as list from "./list";
-import * as setGeminiKey from "./set-gemini-key";
 import * as start from "./start";
 import * as status from "./status";
 
@@ -14,7 +13,6 @@ const subcommandsExecute = {
   end: end.execute,
   status: status.execute,
   list: list.execute,
-  "set-gemini-key": setGeminiKey.execute,
 } as const;
 
 // Each subcommand lives in its own file (data + execute) and gets one line
@@ -27,8 +25,7 @@ export const project: Command = {
     .addSubcommand(configure.data)
     .addSubcommand(end.data)
     .addSubcommand(status.data)
-    .addSubcommand(list.data)
-    .addSubcommand(setGeminiKey.data),
+    .addSubcommand(list.data),
 
   async execute(interaction) {
     const subcommand = interaction.options.getSubcommand() as keyof typeof subcommandsExecute;

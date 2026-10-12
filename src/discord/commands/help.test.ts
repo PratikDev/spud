@@ -16,7 +16,7 @@ describe("help", () => {
 
     const description = reply?.embeds[0]?.toJSON().description;
     expect(description).toContain("/claim");
-    expect(description).toContain("/project set-gemini-key");
+    expect(description).toContain("/project list");
     expect(description).toContain("Install the [GitHub App]");
     expect(reply?.flags).toBe(64); // MessageFlags.Ephemeral
   });

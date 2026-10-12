@@ -1,18 +1,21 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { APICallError } from "ai";
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import { db } from "@/db";
 import { claim, describeAiFailure } from "@/discord/commands/tasks/claim";
+import type { ClaimAnalysis } from "@/llm/claim-analysis";
 
-async function insertProject(
-  channelId: string,
-  opts: { timelineSet?: boolean; geminiKey?: string | null } = {},
-): Promise<number> {
-  const { timelineSet = true, geminiKey = null } = opts;
+// Gemini is never called for real in tests — each /claim test sets what the
+// analyzer returns (or throws) via this.
+let analyzeClaimResult: () => Promise<ClaimAnalysis> = async () => ({ overlappingTask: null, branchName: "feature/x" });
+mock.module("@/llm/claim-analysis", () => ({ analyzeClaim: () => analyzeClaimResult() }));
+
+async function insertProject(channelId: string, opts: { timelineSet?: boolean } = {}): Promise<number> {
+  const { timelineSet = true } = opts;
   const rs = await db.execute({
-    sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, team_lead, start_time, end_time, gemini_api_key)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    sql: `INSERT INTO projects (channel_id, guild_id, title, github_repo, default_branch, team_lead, start_time, end_time)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
     args: [
       channelId,
       `guild-${channelId}`,
@@ -22,7 +25,6 @@ async function insertProject(
       "lead-1",
       timelineSet ? 1000 : null,
       timelineSet ? 2000 : null,
-      geminiKey,
     ],
   });
   return (rs.rows[0] as unknown as { id: number }).id;
@@ -59,20 +61,13 @@ describe("describeAiFailure", () => {
   const apiError = (statusCode: number) =>
     new APICallError({ message: "boom", url: "https://example.test", requestBodyValues: {}, statusCode });
 
-  test("names an invalid/revoked key on 401", () => {
-    expect(describeAiFailure(apiError(401))).toMatch(/invalid or revoked/i);
-    expect(describeAiFailure(apiError(401))).toContain("/project set-gemini-key");
-  });
-
-  test("names an invalid/revoked key on 403", () => {
-    expect(describeAiFailure(apiError(403))).toMatch(/invalid or revoked/i);
-  });
-
   test("names a rate limit on 429", () => {
     expect(describeAiFailure(apiError(429))).toMatch(/rate limit/i);
   });
 
   test("falls back to a generic message for anything else", () => {
+    expect(describeAiFailure(apiError(401))).toMatch(/unexpectedly/i);
+    expect(describeAiFailure(apiError(403))).toMatch(/unexpectedly/i);
     expect(describeAiFailure(apiError(500))).toMatch(/unexpectedly/i);
     expect(describeAiFailure(new Error("network blip"))).toMatch(/unexpectedly/i);
     expect(describeAiFailure("not even an Error instance")).toMatch(/unexpectedly/i);
@@ -93,21 +88,48 @@ describe("/claim", () => {
     expect(replies[0]).toMatch(/start and end time/i);
   });
 
-  test("without a Gemini key, creates the task with a plain slug and notes AI is off", async () => {
-    await insertProject("chan-claim-nokey");
-    const { interaction, replies } = fakeClaimInteraction("chan-claim-nokey", "user-1", "Fix the login bug");
+  test("uses the AI-generated branch name for a new task", async () => {
+    analyzeClaimResult = async () => ({ overlappingTask: null, branchName: "fix/login-bug" });
+    await insertProject("chan-claim-ai");
+    const { interaction, replies } = fakeClaimInteraction("chan-claim-ai", "user-1", "Fix the login bug");
     await claim.execute(interaction);
 
-    expect(replies[0]).toContain("task/fix-the-login-bug");
-    expect(replies[0]).toMatch(/AI overlap detection is off/i);
+    expect(replies[0]).toContain("fix/login-bug");
+    expect(replies[0]).not.toMatch(/AI overlap detection/i);
 
-    const rs = await db.execute({
-      sql: "SELECT status, owner FROM tasks WHERE branch_id = 'task/fix-the-login-bug'",
-      args: [],
-    });
+    const rs = await db.execute({ sql: "SELECT status, owner FROM tasks WHERE branch_id = 'fix/login-bug'", args: [] });
     const task = rs.rows[0] as unknown as { status: string; owner: string };
     expect(task.status).toBe("claimed");
     expect(task.owner).toBe("user-1");
+  });
+
+  test("rejects a likely duplicate, naming the existing task, and creates nothing", async () => {
+    const projectId = await insertProject("chan-claim-dup");
+    await db.execute({
+      sql: `INSERT INTO tasks (branch_id, project_id, description, owner, status) VALUES (?, ?, ?, ?, 'claimed')`,
+      args: ["feature/login", projectId, "Build login", "user-9"],
+    });
+    analyzeClaimResult = async () => ({ overlappingTask: "Build login", branchName: "feature/auth-flow" });
+
+    const { interaction, replies } = fakeClaimInteraction("chan-claim-dup", "user-1", "Auth flow");
+    await claim.execute(interaction);
+
+    expect(replies[0]).toMatch(/duplicate/i);
+    expect(replies[0]).toContain("Build login");
+    const rs = await db.execute({ sql: "SELECT id FROM tasks WHERE branch_id = 'feature/auth-flow'", args: [] });
+    expect(rs.rows.length).toBe(0);
+  });
+
+  test("falls back to a plain slug and notes the failure when the AI call throws", async () => {
+    analyzeClaimResult = async () => {
+      throw new Error("network blip");
+    };
+    await insertProject("chan-claim-aifail");
+    const { interaction, replies } = fakeClaimInteraction("chan-claim-aifail", "user-1", "Fix the login bug");
+    await claim.execute(interaction);
+
+    expect(replies[0]).toContain("task/fix-the-login-bug");
+    expect(replies[0]).toMatch(/AI overlap detection failed/i);
   });
 
   test("claiming an existing unclaimed task skips branch creation entirely", async () => {

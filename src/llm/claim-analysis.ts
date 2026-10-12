@@ -20,11 +20,7 @@ export interface ClaimAnalysis {
   branchName: string;
 }
 
-export async function analyzeClaim(
-  apiKey: string,
-  description: string,
-  claimedDescriptions: string[],
-): Promise<ClaimAnalysis> {
+export async function analyzeClaim(description: string, claimedDescriptions: string[]): Promise<ClaimAnalysis> {
   const claimedList =
     claimedDescriptions.length > 0
       ? `Already-claimed task descriptions on this project:\n${claimedDescriptions.map((d) => `- ${d}`).join("\n")}`
@@ -32,7 +28,7 @@ export async function analyzeClaim(
 
   try {
     const { output } = await generateText({
-      model: getModel(apiKey),
+      model: getModel(),
       output: Output.object({
         schema: outputSchema,
       }),

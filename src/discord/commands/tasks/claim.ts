@@ -1,7 +1,6 @@
 import { APICallError } from "ai";
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 
-import { decrypt } from "@/crypto";
 import { getActiveProject } from "@/db";
 import { respondWithTaskAutocomplete } from "@/discord/autocomplete";
 import { updateBoard } from "@/discord/board";
@@ -18,12 +17,10 @@ import {
 import type { Task } from "@/types";
 import { slugify } from "@/utils/slugify";
 
-// Maps a failed Gemini call to something the team lead can actually act on —
-// "it broke" isn't actionable, "your key looks revoked" is.
+// Maps a failed Gemini call to a user-facing note. Spud's own key is behind
+// every call, so a bad key isn't something the team can fix — only the rate
+// limit case is worth calling out separately (it clears on its own).
 export function describeAiFailure(error: unknown): string {
-  if (APICallError.isInstance(error) && (error.statusCode === 401 || error.statusCode === 403)) {
-    return "AI overlap detection failed — the Gemini key looks invalid or revoked. Task created without it; check the key with `/project set-gemini-key`.";
-  }
   if (APICallError.isInstance(error) && error.statusCode === 429) {
     return "AI overlap detection failed — Gemini rate limit hit. Task created without it; it should work again shortly.";
   }
@@ -72,43 +69,33 @@ export const claim: Command = {
       task = existing;
     } else {
       let branchName: string;
+      const allTasks = await getTasksForProject(project.id);
 
-      if (project.gemini_api_key) {
-        const allTasks = await getTasksForProject(project.id);
+      try {
+        const analysis = await analyzeClaim(
+          description,
+          allTasks.map((t) => t.description),
+        );
 
-        try {
-          const analysis = await analyzeClaim(
-            decrypt(project.gemini_api_key),
-            description,
-            allTasks.map((t) => t.description),
-          );
-
-          const overlapping = allTasks.find((t) => t.description === analysis.overlappingTask);
-          if (overlapping) {
-            const owner = overlapping.owner ? `<@${overlapping.owner}>'s` : "an existing";
-            await interaction.editReply({
-              content: [
-                `This looks like a duplicate of ${owner} task **${overlapping.description}** (\`${overlapping.branch_id}\`) - *${overlapping.status}*.`,
-                "If you think it isn't, please try again with a more detailed description.",
-              ].join("\n"),
-            });
-            return;
-          }
-
-          branchName = analysis.branchName;
-        } catch (error) {
-          // Rate limit, bad/revoked key, network blip, or anything else Gemini
-          // can throw — degrade to the same no-AI path rather than losing the
-          // claim entirely. analyzeClaim already logged the underlying error.
-          branchName = slugify(description);
-          aiNote = `\n-# ${describeAiFailure(error)}`;
+        const overlapping = allTasks.find((t) => t.description === analysis.overlappingTask);
+        if (overlapping) {
+          const owner = overlapping.owner ? `<@${overlapping.owner}>'s` : "an existing";
+          await interaction.editReply({
+            content: [
+              `This looks like a duplicate of ${owner} task **${overlapping.description}** (\`${overlapping.branch_id}\`) - *${overlapping.status}*.`,
+              "If you think it isn't, please try again with a more detailed description.",
+            ].join("\n"),
+          });
+          return;
         }
-      } else {
-        // No Gemini key configured for this project — no overlap check, and a
-        // plain slug instead of an AI-generated `<type>/<slug>` branch name.
+
+        branchName = analysis.branchName;
+      } catch (error) {
+        // Rate limit, bad key, network blip, or anything else Gemini can
+        // throw — degrade to a plain slug rather than losing the claim
+        // entirely. analyzeClaim already logged the underlying error.
         branchName = slugify(description);
-        aiNote =
-          "\n-# AI overlap detection is off for this project — add a Gemini key with `/project set-gemini-key` to enable it.";
+        aiNote = `\n-# ${describeAiFailure(error)}`;
       }
 
       const branchId = await ensureUniqueBranchId(project.id, branchName);

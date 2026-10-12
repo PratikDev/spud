@@ -18,16 +18,12 @@ export interface DriftAnalysis {
   reason: string | null;
 }
 
-export async function analyzeDrift(
-  apiKey: string,
-  taskDescription: string,
-  changedFiles: ChangedFile[],
-): Promise<DriftAnalysis> {
+export async function analyzeDrift(taskDescription: string, changedFiles: ChangedFile[]): Promise<DriftAnalysis> {
   const fileList = changedFiles.map((file) => `- ${file.filename} (${file.status})`).join("\n");
 
   try {
     const { output } = await generateText({
-      model: getModel(apiKey),
+      model: getModel(),
       output: Output.object({ schema: outputSchema }),
       system: DRIFT_SYSTEM_PROMPT,
       prompt: `Task description: "${taskDescription}"\n\nChanged files:\n${fileList}`,

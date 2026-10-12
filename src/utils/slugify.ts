@@ -1,6 +1,6 @@
 const MAX_SLUG_LENGTH = 50;
 
-// Non-AI fallback branch name when a project has no Gemini API key configured —
+// Non-AI fallback branch name when AI is unavailable (no GEMINI_API_KEY, or the call failed) —
 // no attempt at guessing a type prefix (feature/fix/chore/...) since that needs
 // judgment; every branch just gets a flat "task/" prefix instead.
 export function slugify(description: string): string {

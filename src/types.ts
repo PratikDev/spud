@@ -17,7 +17,6 @@ export interface Project {
   handbook_message_id: string | null;
   ended_at: number | null;
   board_message_id: string | null;
-  gemini_api_key: string | null;
 }
 
 export interface Task {

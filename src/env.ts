@@ -18,12 +18,10 @@ function optionalEnv(name: string): string | undefined {
 export const env = {
   DISCORD_TOKEN: requireEnv("DISCORD_TOKEN"),
   DISCORD_CLIENT_ID: requireEnv("DISCORD_CLIENT_ID"),
-  // Not Spud's own key — each project supplies its own via /project
-  // set-gemini-key, so only the model choice is global.
   GEMINI_MODEL_NAME: requireEnv("GEMINI_MODEL_NAME"),
-  // Base64-encoded 32-byte key for AES-256-GCM, used to encrypt sensitive
-  // columns (gemini_api_key) at rest — generate with `openssl rand -base64 32`.
-  ENCRYPTION_KEY: requireEnv("ENCRYPTION_KEY"),
+  // Spud's own Gemini key, shared by every project (overlap detection, AI
+  // branch names, drift nudges).
+  GEMINI_API_KEY: requireEnv("GEMINI_API_KEY"),
   // GitHub App — used to mint short-lived installation tokens so Spud can read
   // private repos the App is installed on (see github/app-auth.ts).
   GITHUB_APP_ID: requireEnv("GITHUB_APP_ID"),

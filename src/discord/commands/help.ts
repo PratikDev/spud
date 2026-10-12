@@ -12,7 +12,7 @@ export const help: Command = {
       "**Spud** — small team task coordination.",
       "",
       "**Project**",
-      "`/project start` · `/project configure` · `/project end` · `/project status` · `/project list` · `/project set-gemini-key`",
+      "`/project start` · `/project configure` · `/project end` · `/project status` · `/project list`",
       "",
       "**Tasks**",
       "`/claim` · `/tasks` · `/done` · `/free` · `/delete`",
