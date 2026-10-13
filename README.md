@@ -13,7 +13,7 @@ A Discord bot for small team task coordination — a live claim board, duplicate
 | `/project start <title> <github-repo>` | Anyone | Starts a project in this channel, becomes its team lead |
 | `/project configure [start-time] [end-time] [handbook]` | Team lead | Sets the timeline (natural language, e.g. "July 25 9am") and/or a handbook file |
 | `/project end` | Team lead | Ends the project, archives its data, unpins the board |
-| `/project status` | Team lead | Shows title, repo, task counts, timeline, handbook link |
+| `/project status` | Anyone | Shows title, repo, task counts, timeline, handbook link |
 | `/project list` | Admin | Lists all active projects in the server |
 
 **Claim board** — a pinned, auto-updating board per channel: 🟢 up for grabs, 🔧 in progress, ✅ done.

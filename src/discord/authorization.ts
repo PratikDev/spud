@@ -33,7 +33,7 @@ export function isServerAdmin(interaction: ChatInputCommandInteraction): boolean
   return allowed;
 }
 
-// Authorization gate for /project configure|end|status: only the project's
+// Authorization gate for /project configure|end: only the project's
 // team lead (whoever ran /project start) may act — deliberately no admin
 // override. Structurally typed so any interaction with a `user` works.
 export function isTeamLead(interaction: { user: { id: string } }, project: Project): boolean {

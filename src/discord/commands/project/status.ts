@@ -2,8 +2,7 @@ import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from 
 import { MessageFlags } from "discord.js";
 
 import { db, getActiveProject } from "@/db";
-import { isTeamLead } from "@/discord/authorization";
-import { NO_ACTIVE_PROJECT, NOT_TEAM_LEAD } from "@/discord/commands/constants";
+import { NO_ACTIVE_PROJECT } from "@/discord/commands/constants";
 import type { TaskStatus } from "@/types";
 
 export function data(sub: SlashCommandSubcommandBuilder) {
@@ -23,11 +22,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  if (!isTeamLead(interaction, project)) {
-    await interaction.reply({ content: NOT_TEAM_LEAD, flags: MessageFlags.Ephemeral });
-    return;
-  }
-
   const countsRs = await db.execute({
     sql: "SELECT status, COUNT(*) as count FROM tasks WHERE project_id = ? GROUP BY status",
     args: [project.id],
@@ -37,9 +31,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const countFor = (status: TaskStatus) => counts.find((row) => row.status === status)?.count ?? 0;
 
   const timeline =
-    project.start_time && project.end_time
-      ? `<t:${project.start_time}:F> → <t:${project.end_time}:F>`
-      : "_not set — run `/project configure`_";
+    project.start_time && project.end_time ? `<t:${project.start_time}:F> → <t:${project.end_time}:F>` : "_not set_";
   const handbook = project.handbook_message_id
     ? `https://discord.com/channels/${interaction.guildId}/${project.channel_id}/${project.handbook_message_id}`
     : "_not uploaded_";
