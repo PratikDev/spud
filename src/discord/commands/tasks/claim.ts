@@ -51,13 +51,6 @@ export const claim: Command = {
       return;
     }
 
-    if (!project.start_time || !project.end_time) {
-      await interaction.editReply({
-        content: "Set this project's start and end time first with `/project configure` before claiming tasks.",
-      });
-      return;
-    }
-
     const description = interaction.options.getString("description", true).trim();
     const existing = await findTaskByDescription(project.id, description, "unclaimed");
 

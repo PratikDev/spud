@@ -81,11 +81,12 @@ describe("/claim", () => {
     expect(replies[0]).toMatch(/no active project/i);
   });
 
-  test("asks for a timeline before claiming when start/end time aren't set", async () => {
+  test("claims fine without a start/end time configured", async () => {
+    analyzeClaimResult = async () => ({ overlappingTask: null, branchName: "feature/no-timeline" });
     await insertProject("chan-claim-notime", { timelineSet: false });
     const { interaction, replies } = fakeClaimInteraction("chan-claim-notime", "user-1", "something");
     await claim.execute(interaction);
-    expect(replies[0]).toMatch(/start and end time/i);
+    expect(replies[0]).toContain("feature/no-timeline");
   });
 
   test("uses the AI-generated branch name for a new task", async () => {
