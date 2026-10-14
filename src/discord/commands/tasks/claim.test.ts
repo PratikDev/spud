@@ -8,7 +8,7 @@ import type { ClaimAnalysis } from "@/llm/claim-analysis";
 
 // Gemini is never called for real in tests — each /claim test sets what the
 // analyzer returns (or throws) via this.
-let analyzeClaimResult: () => Promise<ClaimAnalysis> = async () => ({ overlappingTask: null, branchName: "feature/x" });
+let analyzeClaimResult: () => Promise<ClaimAnalysis> = async () => ({ overlappingTask: null });
 mock.module("@/llm/claim-analysis", () => ({ analyzeClaim: () => analyzeClaimResult() }));
 
 async function insertProject(channelId: string, opts: { timelineSet?: boolean } = {}): Promise<number> {
@@ -82,23 +82,23 @@ describe("/claim", () => {
   });
 
   test("claims fine without a start/end time configured", async () => {
-    analyzeClaimResult = async () => ({ overlappingTask: null, branchName: "feature/no-timeline" });
+    analyzeClaimResult = async () => ({ overlappingTask: null });
     await insertProject("chan-claim-notime", { timelineSet: false });
     const { interaction, replies } = fakeClaimInteraction("chan-claim-notime", "user-1", "something");
     await claim.execute(interaction);
-    expect(replies[0]).toContain("feature/no-timeline");
+    expect(replies[0]).toContain("feature/something");
   });
 
-  test("uses the AI-generated branch name for a new task", async () => {
-    analyzeClaimResult = async () => ({ overlappingTask: null, branchName: "fix/login-bug" });
+  test("names the branch from the description (no AI) for a new task", async () => {
+    analyzeClaimResult = async () => ({ overlappingTask: null });
     await insertProject("chan-claim-ai");
     const { interaction, replies } = fakeClaimInteraction("chan-claim-ai", "user-1", "Fix the login bug");
     await claim.execute(interaction);
 
-    expect(replies[0]).toContain("fix/login-bug");
+    expect(replies[0]).toContain("fix/login");
     expect(replies[0]).not.toMatch(/AI overlap detection/i);
 
-    const rs = await db.execute({ sql: "SELECT status, owner FROM tasks WHERE branch_id = 'fix/login-bug'", args: [] });
+    const rs = await db.execute({ sql: "SELECT status, owner FROM tasks WHERE branch_id = 'fix/login'", args: [] });
     const task = rs.rows[0] as unknown as { status: string; owner: string };
     expect(task.status).toBe("claimed");
     expect(task.owner).toBe("user-1");
@@ -110,7 +110,7 @@ describe("/claim", () => {
       sql: `INSERT INTO tasks (branch_id, project_id, description, owner, status) VALUES (?, ?, ?, ?, 'claimed')`,
       args: ["feature/login", projectId, "Build login", "user-9"],
     });
-    analyzeClaimResult = async () => ({ overlappingTask: "Build login", branchName: "feature/auth-flow" });
+    analyzeClaimResult = async () => ({ overlappingTask: "Build login" });
 
     const { interaction, replies } = fakeClaimInteraction("chan-claim-dup", "user-1", "Auth flow");
     await claim.execute(interaction);
@@ -121,7 +121,7 @@ describe("/claim", () => {
     expect(rs.rows.length).toBe(0);
   });
 
-  test("falls back to a plain slug and notes the failure when the AI call throws", async () => {
+  test("still names the branch and notes the failure when the AI call throws", async () => {
     analyzeClaimResult = async () => {
       throw new Error("network blip");
     };
@@ -129,7 +129,7 @@ describe("/claim", () => {
     const { interaction, replies } = fakeClaimInteraction("chan-claim-aifail", "user-1", "Fix the login bug");
     await claim.execute(interaction);
 
-    expect(replies[0]).toContain("task/fix-the-login-bug");
+    expect(replies[0]).toContain("fix/login");
     expect(replies[0]).toMatch(/AI overlap detection failed/i);
   });
 

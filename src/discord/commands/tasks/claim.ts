@@ -15,7 +15,7 @@ import {
   getTasksForProject,
 } from "@/tasks";
 import type { Task } from "@/types";
-import { slugify } from "@/utils/slugify";
+import { generateBranchName } from "@/utils/branch-name";
 
 // Maps a failed Gemini call to a user-facing note. Spud's own key is behind
 // every call, so a bad key isn't something the team can fix — only the rate
@@ -61,7 +61,6 @@ export const claim: Command = {
       await claimExistingTask(existing.id, interaction.user.id);
       task = existing;
     } else {
-      let branchName: string;
       const allTasks = await getTasksForProject(project.id);
 
       try {
@@ -81,17 +80,14 @@ export const claim: Command = {
           });
           return;
         }
-
-        branchName = analysis.branchName;
       } catch (error) {
         // Rate limit, bad key, network blip, or anything else Gemini can
-        // throw — degrade to a plain slug rather than losing the claim
+        // throw — skip the duplicate check rather than losing the claim
         // entirely. analyzeClaim already logged the underlying error.
-        branchName = slugify(description);
         aiNote = `\n-# ${describeAiFailure(error)}`;
       }
 
-      const branchId = await ensureUniqueBranchId(project.id, branchName);
+      const branchId = await ensureUniqueBranchId(project.id, generateBranchName(description));
       task = await createAndClaimTask(project.id, branchId, description, interaction.user.id);
     }
 

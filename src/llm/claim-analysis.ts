@@ -12,12 +12,10 @@ const outputSchema = z.object({
     .string()
     .nullable()
     .describe("The exact matching claimed task description if this looks like a duplicate, otherwise null"),
-  branchName: z.string().describe('Git branch name in "<type>/<kebab-slug>" format, per the naming rules'),
 });
 
 export interface ClaimAnalysis {
   overlappingTask: string | null;
-  branchName: string;
 }
 
 export async function analyzeClaim(description: string, claimedDescriptions: string[]): Promise<ClaimAnalysis> {
@@ -37,11 +35,7 @@ export async function analyzeClaim(description: string, claimedDescriptions: str
       timeout: { totalMs: 15_000 },
     });
 
-    log.info("Analyzed claim", {
-      description,
-      overlappingTask: output.overlappingTask,
-      branchName: output.branchName,
-    });
+    log.info("Analyzed claim", { description, overlappingTask: output.overlappingTask });
     return output;
   } catch (error) {
     log.error("Failed to analyze claim", { description, error: String(error) });
