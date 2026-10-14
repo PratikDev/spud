@@ -28,13 +28,14 @@ A Discord bot for small team task coordination — a live claim board, duplicate
 
 `/done`, `/free`, and `/delete` only work for the task's owner or a server admin.
 
-**AI features** — Gemini-powered duplicate-claim detection, branch naming, and scope-drift nudges on pushes; this is what makes the bot actually useful. Runs on Spud's own Gemini key (`GEMINI_API_KEY`), shared by every project. Nothing errors if a Gemini call fails — each feature just falls back to something simpler:
+**AI features** — Gemini-powered duplicate-claim detection and scope-drift nudges on pushes; this is what makes the bot actually useful. Runs on Spud's own Gemini key (`GEMINI_API_KEY`), shared by every project. Nothing errors if a Gemini call fails — each feature just falls back to something simpler:
 
 | Feature | With AI | If the Gemini call fails |
 |---|---|---|
 | Duplicate-claim detection | Rejects a likely duplicate, naming the existing task/owner | Skipped — any new description is accepted |
-| Branch naming | `<type>/<kebab-slug>` (feature/fix/chore/docs/refactor) | Plain `task/<kebab-slug>`, no type guessing |
 | Scope-drift nudges | Diffs the push against the task, nudges if it's drifted | Skipped before the GitHub compare call even happens |
+
+**Branch naming** isn't AI — it's rule-based and deterministic: `<type>/<kebab-slug>` (feature/fix/chore/docs/refactor) from keywords in the description, so the same description always gives the same name. The word lists live in [`src/utils/branch-name-dictionary.ts`](src/utils/branch-name-dictionary.ts) and are meant to be tuned.
 
 **Auto-close on merge** — merging a claimed branch's PR marks its task done automatically.
 
